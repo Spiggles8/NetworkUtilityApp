@@ -1,254 +1,189 @@
-﻿using System;
-using System.Linq;
+﻿using NetworkUtilityApp.Controllers;
+using NetworkUtilityApp.Services;
+using System;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using NetworkUtilityApp.Controllers;
 
 namespace NetworkUtilityApp.Tabs
 {
     public partial class TabDiagnostics : UserControl
     {
-        private readonly DiagnosticsController _diag = new();
-
-        /// <summary>
-        /// Optional logger callback provided by host form.
-        /// </summary>
-        public Action<string, LogLevel>? Log { get; set; }
+        private CancellationTokenSource? _pingCts;                 // NEW
+        private const int PingIntervalMs = 2000;                   // NEW (2 seconds)
 
         public TabDiagnostics()
         {
             InitializeComponent();
-            if (!DesignMode)
+            if (IsDesignMode()) return;
+            btnPing.Click += async (_, __) => await OnPingAsync();
+            btnTrace.Click += async (_, __) => await OnTraceAsync();
+            btnNslookup.Click += async (_, __) => await OnNslookupAsync();
+            btnPathPing.Click += async (_, __) => await OnPathPingAsync();
+            Disposed += (_, __) => _pingCts?.Cancel();             // NEW: cleanup
+        }
+
+        // Reverted to instance (was static) so Form1 can call tabDiagnostics.Initialize();
+        public static void Initialize()
+        {
+            // No startup work needed currently.
+        }
+
+        private bool IsDesignMode()
+            => DesignMode || LicenseManager.UsageMode == LicenseUsageMode.Designtime;
+
+        private async Task OnPingAsync()
+        {
+            var target = txtPingTarget.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(target))
             {
-                WireEventsIfNeeded();
-                ApplyDefaultValues();
-            }
-        }
-
-        /// <summary>
-        /// Call from the host after construction if you want to set focus or load defaults.
-        /// </summary>
-        public void Initialize()
-        {
-            // optional: focus target box
-            var target = Find<TextBox>("txtDiagTarget");
-            target?.Focus();
-        }
-
-        // ---------------------------
-        // Wire UI events
-        // ---------------------------
-        private void WireEventsIfNeeded()
-        {
-            Find<Button>("btnPingOnce")?.Apply(b => b.Click += async (_, __) => await OnPingOnceAsync());
-            Find<Button>("btnPingStart")?.Apply(b => b.Click += (_, __) => OnPingStart());
-            Find<Button>("btnPingStop")?.Apply(b => b.Click += (_, __) => OnPingStop());
-
-            Find<Button>("btnTraceroute")?.Apply(b => b.Click += async (_, __) => await OnTracerouteAsync());
-            Find<Button>("btnTracerouteStop")?.Apply(b => b.Click += (_, __) => OnTracerouteStop()); // optional
-
-            Find<Button>("btnTcpTest")?.Apply(b => b.Click += async (_, __) => await OnTcpTestAsync());
-        }
-
-        private void ApplyDefaultValues()
-        {
-            SetIfMissing("numPingIntervalMs", 1000);
-            SetIfMissing("numPingTimeoutMs", 2000);
-            SetIfMissing("numPingSize", 32);
-            SetIfMissing("numPingTtl", 128);
-
-            SetIfMissing("chkPingDontFragment", true);
-
-            SetIfMissing("chkTraceResolve", false);
-            SetIfMissing("numTraceMaxHops", 30);
-            SetIfMissing("numTracePerHopTimeoutMs", 2000);
-
-            SetIfMissing("numTcpPort", 80);
-            SetIfMissing("numTcpTimeoutMs", 1500);
-        }
-
-        // ---------------------------
-        // Ping
-        // ---------------------------
-        private async Task OnPingOnceAsync()
-        {
-            string host = GetText("txtDiagTarget");
-            if (string.IsNullOrWhiteSpace(host))
-            {
-                MessageBox.Show("Enter a host or IP to ping.", "Diagnostics", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                AppendLog("[ERROR] Please enter a ping target.");
                 return;
             }
 
-            int timeout = GetInt("numPingTimeoutMs", 2000);
-            int size = GetInt("numPingSize", 32);
-            int ttl = GetInt("numPingTtl", 128);
-            bool dontFrag = GetBool("chkPingDontFragment", true);
-
-            var line = await _diag.PingOnceAsync(host, timeout, size, ttl, dontFrag);
-            Log?.Invoke(line, line.Contains("SUCCESS", StringComparison.OrdinalIgnoreCase) ? LogLevel.Success :
-                             line.Contains("FAIL", StringComparison.OrdinalIgnoreCase) ? LogLevel.Warning : LogLevel.Info);
-        }
-
-        private void OnPingStart()
-        {
-            string host = GetText("txtDiagTarget");
-            if (string.IsNullOrWhiteSpace(host))
+            // Continuous mode
+            if (chkPingContinuous.Checked)
             {
-                MessageBox.Show("Enter a host or IP to ping.", "Diagnostics", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                // Toggle: if already running, stop it
+                if (_pingCts is not null)
+                {
+                    _pingCts.Cancel();
+                    _pingCts = null;
+                    btnPing.Text = "Ping";
+                    AppendLog("[PING] Continuous ping stopped.");
+                    return;
+                }
+
+                _pingCts = new CancellationTokenSource();
+                btnPing.Text = "Stop";
+                AppendLog($"[PING] Starting continuous ping: {target} (every {PingIntervalMs / 1000}s)");
+
+                try
+                {
+                    await Task.Run(async () =>
+                    {
+                        var token = _pingCts!.Token;
+                        while (!token.IsCancellationRequested)
+                        {
+                            var result = NetworkController.PingHost(target);
+                            AppendLog(result);
+                            await Task.Delay(PingIntervalMs, token);
+                        }
+                    });
+                }
+                catch (OperationCanceledException)
+                {
+                    // expected on stop
+                }
+                catch (Exception ex)
+                {
+                    AppendLog("[ERROR] " + ex.Message);
+                }
+                finally
+                {
+                    btnPing.Text = "Ping";
+                    _pingCts?.Dispose();
+                    _pingCts = null;
+                }
                 return;
             }
 
-            int interval = GetInt("numPingIntervalMs", 1000);
-            int timeout = GetInt("numPingTimeoutMs", 2000);
-            int size = GetInt("numPingSize", 32);
-            int ttl = GetInt("numPingTtl", 128);
-            bool dontFrag = GetBool("chkPingDontFragment", true);
-
-            SetButtonsEnabled(pinging: true);
-
-            _diag.StartContinuousPing(
-                host: host,
-                intervalMs: interval,
-                timeoutMs: timeout,
-                size: size,
-                ttl: ttl,
-                dontFragment: dontFrag,
-                onLine: (line, st) => Log?.Invoke(line, Map(st))
-            );
+            // One-shot ping
+            AppendLog($"[PING] Target: {target}");
+            var once = await Task.Run(() => NetworkController.PingHost(target));
+            AppendLog(once);
         }
 
-        private void OnPingStop()
+        private async Task OnTraceAsync()
         {
-            _diag.StopContinuousPing();
-            SetButtonsEnabled(pinging: false);
-        }
-
-        private void SetButtonsEnabled(bool pinging)
-        {
-            var start = Find<Button>("btnPingStart");
-            var stop = Find<Button>("btnPingStop");
-            if (start != null) start.Enabled = !pinging;
-            if (stop != null) stop.Enabled = pinging;
-        }
-
-        // ---------------------------
-        // Traceroute
-        // ---------------------------
-        private async Task OnTracerouteAsync()
-        {
-            string host = GetText("txtDiagTarget");
-            if (string.IsNullOrWhiteSpace(host))
+            var target = txtTraceTarget.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(target))
             {
-                MessageBox.Show("Enter a host or IP to trace.", "Diagnostics", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                AppendLog("[ERROR] Please enter a traceroute target.");
                 return;
             }
+            var resolve = chkResolveNames.Checked;
+            AppendLog($"[TRACEROUTE] Target: {target} (Resolve names: {resolve})");
+            var result = await Task.Run(() => NetworkController.Traceroute(target, 30, 4000, resolve));
+            if (result is null)
+            {
+                AppendLog("[ERROR] Traceroute returned no data.");
+                return;
+            }
+            if (result.Hops == null || result.Hops.Count == 0)
+            {
+                AppendLog("[INFO] No hops parsed. Raw output follows:");
+                AppendLog(result.RawOutput);
+                return;
+            }
+            foreach (var hop in result.Hops)
+            {
+                var r1 = hop.Rtt1Ms?.ToString() ?? "*";
+                var r2 = hop.Rtt2Ms?.ToString() ?? "*";
+                var r3 = hop.Rtt3Ms?.ToString() ?? "*";
+                var host = hop.TimedOut ? "*" : hop.HostnameOrAddress;
+                AppendLog($"{hop.Hop,2}: {r1} ms  {r2} ms  {r3} ms  {host}");
+            }
+        }
 
-            bool resolve = GetBool("chkTraceResolve", false);
-            int hops = GetInt("numTraceMaxHops", 30);
-            int perHopMs = GetInt("numTracePerHopTimeoutMs", 2000);
+        private async Task OnNslookupAsync()
+        {
+            var target = txtNslookupTarget.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(target))
+            {
+                AppendLog("[ERROR] Please enter a target for nslookup.");
+                return;
+            }
+            AppendLog($"[NSLOOKUP] Target: {target}");
+            var output = await Task.Run(() => RunTool("nslookup", target));
+            AppendLog(output);
+        }
 
-            var btnRun = Find<Button>("btnTraceroute");
-            var btnStop = Find<Button>("btnTracerouteStop");
-            if (btnRun != null) btnRun.Enabled = false;
-            if (btnStop != null) btnStop.Enabled = true;
+        private async Task OnPathPingAsync()
+        {
+            var target = txtPathPingTarget.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(target))
+            {
+                AppendLog("[ERROR] Please enter a target for pathping (IP or host).");
+                return;
+            }
+            AppendLog($"[PATHPING] Target: {target}");
+            var output = await Task.Run(() => RunTool("pathping", $"-n {target}"));
+            AppendLog(output);
+        }
 
+        private static string RunTool(string fileName, string arguments)
+        {
             try
             {
-                await _diag.TracerouteAsync(
-                    host: host,
-                    resolveHostnames: resolve,
-                    maxHops: hops,
-                    perHopTimeoutMs: perHopMs,
-                    onLine: (line, st) => Log?.Invoke(line, Map(st))
-                );
+                using var p = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = fileName,
+                        Arguments = arguments,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+                p.Start();
+                string stdout = p.StandardOutput.ReadToEnd();
+                string stderr = p.StandardError.ReadToEnd();
+                if (!p.WaitForExit(120_000))
+                    return "[ERROR] Command timed out.";
+                var text = (stdout + (string.IsNullOrWhiteSpace(stderr) ? "" : Environment.NewLine + stderr)).Trim();
+                return string.IsNullOrWhiteSpace(text) ? "[INFO] No output." : text;
             }
-            finally
+            catch (Exception ex)
             {
-                if (btnRun != null) btnRun.Enabled = true;
-                if (btnStop != null) btnStop.Enabled = false;
+                return "[ERROR] " + ex.Message;
             }
         }
 
-        private void OnTracerouteStop()
-        {
-            _diag.StopTraceroute();
-        }
-
-        // ---------------------------
-        // TCP Port Test
-        // ---------------------------
-        private async Task OnTcpTestAsync()
-        {
-            string host = GetText("txtTcpHost");
-            if (string.IsNullOrWhiteSpace(host))
-            {
-                // fallback to main target
-                host = GetText("txtDiagTarget");
-            }
-
-            if (string.IsNullOrWhiteSpace(host))
-            {
-                MessageBox.Show("Enter a host or IP to test.", "Diagnostics", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
-
-            int port = GetInt("numTcpPort", 80);
-            int timeout = GetInt("numTcpTimeoutMs", 1500);
-
-            var (ok, ms, err) = await _diag.TestTcpPortAsync(host, port, timeout);
-            if (ok)
-                Log?.Invoke($"[TCP OPEN] {host}:{port} ({ms}ms)", LogLevel.Success);
-            else
-                Log?.Invoke($"[TCP CLOSED] {host}:{port} ({ms}ms) {err}", LogLevel.Warning);
-        }
-
-        // ---------------------------
-        // Helpers
-        // ---------------------------
-        private T? Find<T>(string name) where T : Control
-            => Controls.Find(name, true).FirstOrDefault() as T;
-
-        private string GetText(string name)
-            => (Find<TextBox>(name)?.Text ?? string.Empty).Trim();
-
-        private int GetInt(string name, int fallback)
-        {
-            var nud = Find<NumericUpDown>(name);
-            if (nud != null) return (int)nud.Value;
-            var txt = Find<TextBox>(name);
-            if (txt != null && int.TryParse(txt.Text, out var v)) return v;
-            return fallback;
-        }
-
-        private bool GetBool(string name, bool fallback)
-        {
-            var cb = Find<CheckBox>(name);
-            if (cb != null) return cb.Checked;
-            return fallback;
-        }
-
-        private void SetIfMissing(string name, int value)
-        {
-            var nud = Find<NumericUpDown>(name);
-            if (nud != null && nud.Value == 0) nud.Value = value;
-            var txt = Find<TextBox>(name);
-            if (txt != null && string.IsNullOrWhiteSpace(txt.Text)) txt.Text = value.ToString();
-        }
-
-        private void SetIfMissing(string name, bool value)
-        {
-            var cb = Find<CheckBox>(name);
-            if (cb != null) cb.Checked = value;
-        }
-
-        private static LogLevel Map(DiagStatus status) => status switch
-        {
-            DiagStatus.Success => LogLevel.Success,
-            DiagStatus.Warning => LogLevel.Warning,
-            DiagStatus.Error => LogLevel.Error,
-            _ => LogLevel.Info
-        };
+        private static void AppendLog(string message) => AppLog.Info(message);
     }
-
-    public enum LogLevel { Info, Success, Warning, Error }
 }

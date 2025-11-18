@@ -17,15 +17,15 @@
 </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="MaterialSkin.2" Version="2.3.1" />
-    <PackageReference Include="System.Management" Version="9.0.8" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Compile Update="Properties\Settings.Designer.cs">
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <AutoGen>True</AutoGen>
       <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
+    <Compile Update="Tabs\TabDiscovery.cs" />
+    <Compile Update="Tabs\TabDiagnostics.cs" />
+    <Compile Update="Tabs\TabSettings.cs">
+      <SubType>UserControl</SubType>
     </Compile>
   </ItemGroup>
 
@@ -35,5 +35,28 @@
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
   </ItemGroup>
+  
+  <ItemGroup>
+  <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2420.47" />
+</ItemGroup>
+
+<ItemGroup>
+  <Content Include="wwwroot\**\*">
+    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+  </Content>
+</ItemGroup>
+
+<ItemGroup>
+  <Content Update="wwwroot\app.js">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </Content>
+  <Content Update="wwwroot\index.html">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </Content>
+  <Content Update="wwwroot\styles.css">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </Content>
+</ItemGroup>
+
 
 </Project>

@@ -2,14 +2,24 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Management;
+using System.Net;
 using System.Net.NetworkInformation;
-using System.Text;
+using System.Security.Principal;
+using System.Text.RegularExpressions;
 
 namespace NetworkUtilityApp.Controllers
 {
+    /// <summary>
+    /// Lightweight controller that exposes common network operations used by the UI.
+    ///
+    /// Responsibilities:
+    /// - Enumerate network adapters and report a small set of IPv4 properties
+    /// - Configure adapter addressing using Windows 'netsh' (DHCP / Static)
+    ///
+    /// </summary>
     public sealed class NetworkAdapterInfo
     {
+        // Simple POCO used by the UI. Initialized with empty strings to avoid null checks.
         public string AdapterName { get; set; } = string.Empty;
         public string IsDhcp { get; set; } = string.Empty;
         public string IpAddress { get; set; } = string.Empty;
@@ -20,111 +30,174 @@ namespace NetworkUtilityApp.Controllers
         public string MacAddress { get; set; } = string.Empty;
     }
 
-
-    public class NetworkController
+    public partial class NetworkController
     {
+        // -----------------------
+        // Helper utilities
+        // -----------------------
+
+        /// <summary>
+        /// Returns true when the current process is running with Administrator privileges.
+        /// Important: calling netsh to change adapter configuration requires elevation.
+        /// </summary>
+        private static bool IsAdministrator()
+        {
+            // Get the Windows identity for the current thread/process.
+            using var id = WindowsIdentity.GetCurrent();
+            // Build a principal (role-based security object) from that identity.
+            var pr = new WindowsPrincipal(id);
+            // Check whether the principal is in the built-in Administrator role.
+            return pr.IsInRole(WindowsBuiltInRole.Administrator);
+        }
+
+        // -----------------------
+        // Adapter enumeration
+        // -----------------------
+
+        /// <summary>
+        /// Enumerates local network interfaces and constructs a lightweight summary
+        /// containing the adapter's name, DHCP state, IPv4 address, subnet mask, gateway,
+        /// operational status, description, and MAC address.
+        ///
+        /// </summary>
         public static List<NetworkAdapterInfo> GetAdapters()
         {
+            // Prepare the list we will return to the caller (UI).
             var adaptersList = new List<NetworkAdapterInfo>();
 
             try
             {
+                // GetAllNetworkInterfaces returns every network interface known to the OS.
+                // We iterate them and extract a compact set of properties for the UI.
                 foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
                 {
+                    // Obtain IP-related properties for this interface (addresses, gateways, etc.)
                     var props = nic.GetIPProperties();
 
+                    // Select the first IPv4 unicast address (if any).
+                    // UnicastAddresses includes IPv4 and IPv6 addresses; we filter by AddressFamily.
                     var ipv4 = props.UnicastAddresses
-                        .FirstOrDefault(ip => ip.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork);
+                        .FirstOrDefault(a => a.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork);
 
+                    // Select the first IPv4 gateway (if any).
                     var gateway = props.GatewayAddresses
                         .FirstOrDefault(g => g.Address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork);
 
+                    // Create a small DTO for the UI and add it to the list.
                     adaptersList.Add(new NetworkAdapterInfo
                     {
                         AdapterName = nic.Name,
+
+                        // Some NICs may not have IPv4 properties; use null-conditional to avoid exceptions.
+                        // We convert boolean DHCP state to "Yes"/"No" strings for display.
                         IsDhcp = props.GetIPv4Properties()?.IsDhcpEnabled == true ? "Yes" : "No",
-                        IpAddress = ipv4?.Address.ToString() ?? "",
-                        Subnet = ipv4?.IPv4Mask?.ToString() ?? "",
-                        Gateway = gateway?.Address.ToString() ?? "",
+                        IpAddress = ipv4?.Address.ToString() ?? string.Empty,
+                        Subnet = ipv4?.IPv4Mask?.ToString() ?? string.Empty,
+                        Gateway = gateway?.Address.ToString() ?? string.Empty,
                         Status = nic.OperationalStatus.ToString(),
                         HardwareDetails = nic.Description,
+
+                        // Convert the physical (MAC) address byte array to a readable hex string (AA:BB:CC).
                         MacAddress = string.Join(":", nic.GetPhysicalAddress().GetAddressBytes().Select(b => b.ToString("X2")))
                     });
                 }
             }
             catch (Exception ex)
             {
+                // If something fails, return a single "Error" result so the UI can show the message.
                 adaptersList.Add(new NetworkAdapterInfo
                 {
                     AdapterName = "Error",
-                    Status = $"Failed to get adapters: {ex.Message}"
+                    Status = $"Failed to enumerate adapters: {ex.Message}"
                 });
             }
-
             return adaptersList;
         }
 
-        public string SetDhcp(string adapterName)
+        // -----------------------
+        // Adapter configuration (netsh)
+        // -----------------------
+
+        /// <summary>
+        /// Enables DHCP on the named adapter by invoking the Windows 'netsh' tool.
+        /// Returns a textual status message (success or error).
+        /// </summary>
+        public static string SetDhcp(string adapterName)
         {
+            // Guard: changing adapter settings requires admin rights. Return informative message if not elevated.
+            if (!IsAdministrator())
+                return "[ERROR] Administrator privileges required. Run the app as Administrator.";
+
             try
             {
-                var process = new Process
+                // Prepare ProcessStartInfo to run netsh and capture output streams.
+                // UseShellExecute=false is required to redirect stdout/stderr.
+                var psi = new ProcessStartInfo
                 {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = "netsh",
-                        Arguments = $"interface ip set address \"{adapterName}\" dhcp",
-                        Verb = "runas",
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        UseShellExecute = false,
-                        CreateNoWindow = true
-                    }
+                    FileName = "netsh",
+                    Arguments = $"interface ip set address \"{adapterName}\" dhcp",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
                 };
 
-                process.Start();
+                // Start the process, read both output streams fully, and wait for exit.
+                using var process = Process.Start(psi)!;
                 string output = process.StandardOutput.ReadToEnd();
                 string error = process.StandardError.ReadToEnd();
                 process.WaitForExit();
 
-                if (!string.IsNullOrEmpty(error))
-                    return $"[ERROR] Failed to set DHCP on {adapterName}: {error}";
+                // If netsh wrote anything to stderr consider it an error and return it to UI.
+                if (!string.IsNullOrWhiteSpace(error))
+                    return $"[ERROR] Failed to set DHCP on {adapterName}: {error.Trim()}";
 
-                return $"[SUCCESS] DHCP enabled on {adapterName}\n{output}";
+                return $"[SUCCESS] DHCP enabled on {adapterName}\n{output.Trim()}";
             }
             catch (Exception ex)
             {
+                // Catch unexpected exceptions and return an error message (avoid throwing from UI threads).
                 return $"[ERROR] Exception while setting DHCP: {ex.Message}";
             }
         }
 
-        public string SetStatic(string adapterName, string ip, string subnet, string gateway)
+        /// <summary>
+        /// Sets a static IPv4 address on the named adapter using Windows 'netsh'.
+        /// Arguments: adapterName, ip, subnetMask, gateway.
+        /// Returns a textual status message (success or error).
+        /// </summary>
+        public static string SetStatic(string adapterName, string ip, string subnet, string gateway)
         {
+            // Guard for elevation just like SetDhcp.
+            if (!IsAdministrator())
+                return "[ERROR] Administrator privileges required. Run the app as Administrator.";
+
             try
             {
-                var process = new Process
+                // Build ProcessStartInfo to run netsh with static configuration arguments.
+                var psi = new ProcessStartInfo
                 {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = "netsh",
-                        Arguments = $"interface ip set address \"{adapterName}\" static {ip} {subnet} {gateway} 1",
-                        Verb = "runas",
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        UseShellExecute = false,
-                        CreateNoWindow = true
-                    }
+                    FileName = "netsh",
+                    // The final '1' is the interface metric (priority) — adjust if necessary.
+                    Arguments = $"interface ip set address \"{adapterName}\" static {ip} {subnet} {gateway} 1",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
                 };
 
-                process.Start();
+                // Execute and capture output/errors.
+                using var process = Process.Start(psi)!;
                 string output = process.StandardOutput.ReadToEnd();
                 string error = process.StandardError.ReadToEnd();
                 process.WaitForExit();
 
-                if (!string.IsNullOrEmpty(error))
-                    return $"[ERROR] Failed to set Static IP on {adapterName}: {error}";
+                // If netsh reported an error, return it for the UI to display.
+                if (!string.IsNullOrWhiteSpace(error))
+                    return $"[ERROR] Failed to set Static IP on {adapterName}: {error.Trim()}";
 
-                return $"[SUCCESS] Static IP set on {adapterName} — IP: {ip}, Subnet: {subnet}, Gateway: {gateway}\n{output}";
+                // Otherwise return a success message including the requested parameters.
+                return $"[SUCCESS] Static IP set on {adapterName} — IP: {ip}, Subnet: {subnet}, Gateway: {gateway}\n{output.Trim()}";
             }
             catch (Exception ex)
             {
@@ -132,13 +205,23 @@ namespace NetworkUtilityApp.Controllers
             }
         }
 
-        public string PingHost(string ipAddress)
+        // -----------------------
+        // Network diagnostics
+        // -----------------------
+
+        /// <summary>
+        /// Sends a single ICMP echo (ping) and returns a short textual summary.
+        /// Timeout is 2000ms. Exceptions are caught and returned as error strings.
+        /// </summary>
+        public static string PingHost(string ipAddress)
         {
             try
             {
+                // Create a Ping instance and send an ICMP echo with a 2 second timeout.
                 using var ping = new Ping();
                 var reply = ping.Send(ipAddress, 2000); // 2s timeout
 
+                // Inspect the reply status and build a small result string.
                 if (reply.Status == IPStatus.Success)
                 {
                     return $"[PING SUCCESS] {ipAddress} responded in {reply.RoundtripTime}ms (TTL={reply.Options?.Ttl})";
@@ -150,8 +233,139 @@ namespace NetworkUtilityApp.Controllers
             }
             catch (Exception ex)
             {
+                // Return error text rather than throwing (keeps UI code simple).
                 return $"[ERROR] Ping failed: {ex.Message}";
             }
         }
+
+        // -------- Traceroute models --------
+
+        /// <summary>
+        /// Represents a single hop returned by traceroute.
+        /// RTT values are nullable because tracert reports '*' on timeout.
+        /// </summary>
+        public sealed class TraceHop
+        {
+            public int Hop { get; init; }
+            public int? Rtt1Ms { get; init; }
+            public int? Rtt2Ms { get; init; }
+            public int? Rtt3Ms { get; init; }
+            public string HostnameOrAddress { get; init; } = string.Empty;
+            public bool TimedOut { get; init; }
+        }
+
+        /// <summary>
+        /// Container for parsed traceroute output including raw output for debugging.
+        /// </summary>
+        public sealed class TraceResult
+        {
+            // Hops is initially empty; callers can inspect RawOutput for full command text.
+            public List<TraceHop> Hops { get; } = new List<TraceHop>();
+            public string RawOutput { get; init; } = string.Empty;
+            public string Target { get; init; } = string.Empty;
+        }
+
+        /// <summary>
+        /// Runs Windows 'tracert' and parses the textual output into TraceHop entries.
+        /// This parsing uses a regular expression tuned for the typical English tracert output.
+        /// Localized OS output can break the regex — treat parsing results as best-effort.
+        /// </summary>
+        /// <remarks>
+        /// Caller should run this off the UI thread to avoid blocking the UI while tracert runs.
+        /// </remarks>
+        public static TraceResult Traceroute(
+            string target,
+            int maxHops = 30,
+            int timeoutPerHopMs = 4000,
+            bool resolveNames = true)
+        {
+            // Validate input early to avoid running tracert with an empty target.
+            if (string.IsNullOrWhiteSpace(target))
+                throw new ArgumentException("Target is required.", nameof(target));
+
+            // Build the list of command-line arguments for tracert.
+            // Use -d to skip DNS resolution when resolveNames == false.
+            var args = new List<string>();
+            if (!resolveNames) args.Add("-d");
+            args.Add("-h"); args.Add(maxHops.ToString());
+            args.Add("-w"); args.Add(timeoutPerHopMs.ToString());
+            args.Add(target);
+
+            // Configure ProcessStartInfo to run tracert and capture output.
+            var psi = new ProcessStartInfo("tracert", string.Join(" ", args))
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            string output;
+            // Start the process and read all output. Caller must run off UI thread to avoid blocking.
+            using (var p = Process.Start(psi)!)
+            {
+                // Read all stdout; for very long traces consider streaming line-by-line.
+                output = p.StandardOutput.ReadToEnd();
+                // Some Windows builds write informational text to stderr; read to drain the stream.
+                _ = p.StandardError.ReadToEnd();
+                p.WaitForExit();
+            }
+
+            // Prepare the return container including the raw text for debugging.
+            var result = new TraceResult { RawOutput = output, Target = target };
+
+            // Use the source-generated compiled regex to parse each hop line.
+            var hopRegex = MyRegex();
+
+            // Split output into non-empty lines and process each.
+            foreach (var line in output.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                // Attempt to match the expected tracert hop line format.
+                var m = hopRegex.Match(line);
+                if (!m.Success) continue;
+
+                // Parse hop number from capture group 1; skip if it isn't an integer.
+                if (!int.TryParse(m.Groups[1].Value, out var hop)) continue;
+
+                // Local helper: parse a single RTT token which might be "*", "<1 ms" or "3 ms".
+                static int? ParseRtt(string s)
+                {
+                    s = s.Trim();
+                    // '*' or "Request timed out." indicates no reply -> null RTT.
+                    if (s == "*" || s.Equals("Request timed out.", StringComparison.OrdinalIgnoreCase))
+                        return null;
+                    // Remove '<' and 'ms' then try parse the integer milliseconds value.
+                    s = s.Replace("<", "").Replace("ms", "", StringComparison.OrdinalIgnoreCase).Trim();
+                    return int.TryParse(s, out var v) ? v : (int?)null;
+                }
+
+                // Parse the three RTT samples from capture groups 2/3/4.
+                var rtt1 = ParseRtt(m.Groups[2].Value);
+                var rtt2 = ParseRtt(m.Groups[3].Value);
+                var rtt3 = ParseRtt(m.Groups[4].Value);
+
+                // Tail group contains either hostname/address or "Request timed out." text.
+                var tail = m.Groups[5].Value.Trim();
+                // Mark timedOut when the tail contains the phrase "timed out" (case-insensitive).
+                var timedOut = tail.Contains("timed out", StringComparison.OrdinalIgnoreCase);
+
+                // Add parsed hop to the result list.
+                result.Hops.Add(new TraceHop
+                {
+                    Hop = hop,
+                    Rtt1Ms = rtt1,
+                    Rtt2Ms = rtt2,
+                    Rtt3Ms = rtt3,
+                    HostnameOrAddress = tail,
+                    TimedOut = timedOut
+                });
+            }
+            return result;
+        }
+
+        // Use the GeneratedRegex attribute (available on modern .NET) to produce a compiled regex
+        // at compile-time rather than building/compiling it at runtime.
+        [GeneratedRegex(@"^\s*(\d+)\s+(\*|<*\d+\s*ms)\s+(\*|<*\d+\s*ms)\s+(\*|<*\d+\s*ms)\s+(.+)$", RegexOptions.Compiled | RegexOptions.CultureInvariant)]
+        private static partial Regex MyRegex();
     }
 }
