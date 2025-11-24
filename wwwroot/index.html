@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Network Utility App</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <nav>
+      <button class="tab-btn active" data-view="adapters" aria-label="Adapters">Adapters</button>
+      <button class="tab-btn" data-view="diagnostics" aria-label="Diagnostics">Diagnostics</button>
+      <button class="tab-btn" data-view="discovery" aria-label="Discovery">Discovery</button>
+      <button class="tab-btn" data-view="settings" aria-label="Settings">Settings</button>
+    </nav>
+  </header>
+  <main>
+    <section id="view-adapters" class="view active">
+      <div class="section-header"><h3>Network Adapters Table</h3></div>
+      <div class="adapters-table-area">
+        <table id="tblAdapters" class="with-divider-bottom">
+          <thead>
+            <tr>
+              <th>Adapter</th><th>DHCP</th><th>IP Address</th><th>Subnet</th><th>Gateway</th><th>Status</th><th>Description</th><th>MAC</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="table-actions">
+          <button id="btnRefreshAdapters" class="action-btn accent">Refresh Adapters</button>
+        </div>
+      </div>
+      <div class="section-header top-spaced"><h3>Network Adapter Adjustment</h3></div>
+      <div class="adapter-controls with-divider-top">
+        <div class="row row-selected">
+          <label>Selected Adapter
+            <select id="selAdapter"></select>
+          </label>
+        </div>
+        <div class="row row-addressing">
+          <label>IP
+            <input id="ipAddress" placeholder="192.168.1.100" />
+          </label>
+          <label>Subnet
+            <input id="subnetMask" placeholder="255.255.255.0" />
+          </label>
+          <label>Gateway
+            <input id="gateway" placeholder="192.168.1.1" />
+          </label>
+        </div>
+        <div class="row row-mode">
+          <button id="btnDhcp" class="action-btn accent">Set DHCP</button>
+          <button id="btnStatic" class="action-btn accent">Set Static IP</button>
+        </div>
+        <div class="row favorites favorites-select">
+          <label>Select Favorite Static IP
+            <select id="favoriteSelect"><option value="">(none)</option></select>
+          </label>
+        </div>
+      </div>
+    </section>
+    <section id="view-diagnostics" class="view">
+      <div class="section-header"><h3>Diagnostics</h3></div>
+      <div class="diag-block">
+        <label>Ping Target: <input id="pingTarget" value="8.8.8.8" /></label>
+        <button id="btnPing" class="action-btn">Ping</button>
+        <div id="pingResult"></div>
+      </div>
+    </section>
+    <section id="view-discovery" class="view">
+      <div class="section-header"><h3>Discovery (Coming Soon)</h3></div>
+      <p>Discovery UI migration pending.</p>
+    </section>
+    <section id="view-settings" class="view">
+      <div class="section-header"><h3>Settings (Coming Soon)</h3></div>
+      <p>Settings UI migration pending.</p>
+    </section>
+  </main>
+  <footer></footer>
+  <script src="app.js"></script>
+</body>
+</html>
