@@ -1,4 +1,13 @@
 <!DOCTYPE html>
+<!--
+  UI CHANGE SUMMARY:
+  - Network Adapters tab restructured: table area separated from adjustment controls.
+  - Refresh Adapters button styled green; DHCP/Static buttons use accent style.
+  - Favorites converted from fixed buttons to dropdown with auto-fill behavior.
+  - Removed status/log text from adjustment section and removed footer text.
+  - Selection highlight color switched to gray via CSS.
+  - Layout refinements to reduce vertical shifting during refresh.
+-->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -16,6 +25,7 @@
   </header>
   <main>
     <section id="view-adapters" class="view active">
+      <!-- Adapters tab -->
       <div class="section-header"><h3>Network Adapters Table</h3></div>
       <div class="adapters-table-area">
         <table id="tblAdapters" class="with-divider-bottom">
@@ -62,18 +72,115 @@
     <section id="view-diagnostics" class="view">
       <div class="section-header"><h3>Diagnostics</h3></div>
       <div class="diag-block">
-        <label>Ping Target: <input id="pingTarget" value="8.8.8.8" /></label>
+        <label>Ping Target
+          <input id="pingTarget" value="8.8.8.8" />
+        </label>
         <button id="btnPing" class="action-btn">Ping</button>
-        <div id="pingResult"></div>
+        <label class="chk-inline"><input type="checkbox" id="chkPingContinuous" /> Continuous</label>
+      </div>
+      <div class="diag-block">
+        <label>Traceroute Target
+          <input id="traceTarget" value="8.8.8.8" />
+        </label>
+        <button id="btnTrace" class="action-btn">Traceroute</button>
+        <label class="chk-inline"><input type="checkbox" id="chkTraceResolve" checked /> Resolve Names</label>
+      </div>
+      <div class="diag-block">
+        <label>NSLookup Target
+          <input id="nsTarget" value="google.com" />
+        </label>
+        <button id="btnNslookup" class="action-btn">NSLookup</button>
+      </div>
+      <div class="diag-block">
+        <label>PathPing Target
+          <input id="pathPingTarget" value="8.8.8.8" />
+        </label>
+        <button id="btnPathPing" class="action-btn">PathPing</button>
+      </div>
+      <div class="diag-block" style="justify-content:flex-start">
+        <button id="btnDiagCancel" class="action-btn danger">Cancel Command</button>
       </div>
     </section>
     <section id="view-discovery" class="view">
-      <div class="section-header"><h3>Discovery (Coming Soon)</h3></div>
-      <p>Discovery UI migration pending.</p>
+      <div class="section-header"><h3>Network Discovery</h3></div>
+      <div class="discovery-panel">
+        <div class="disc-row">
+          <label>Adapter
+            <select id="discAdapter"></select>
+          </label>
+        </div>
+        <div class="disc-row">
+          <label>Start IP
+            <input id="discStartIp" placeholder="192.168.1.1" />
+          </label>
+          <label>End IP
+            <input id="discEndIp" placeholder="192.168.1.254" />
+          </label>
+        </div>
+        <div class="disc-row">
+          <button id="discStart" class="action-btn accent">Start Scan</button>
+          <button id="discCancel" class="action-btn danger">Cancel Scan</button>
+        </div>
+        <div class="disc-row stats">
+          <span id="discProgress">Progress: 0 / 0</span>
+          <span id="discActive">Active: 0</span>
+          <span id="discEta">ETA: --:--:--</span>
+        </div>
+        <div class="disc-table-wrapper">
+          <table id="discResults">
+            <thead>
+              <tr><th>IP</th><th>Hostname</th><th>Latency (ms)</th><th>MAC</th><th>Vendor</th><th>Status</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="disc-row">
+          <button id="discSave" class="action-btn">Save Results</button>
+          <button id="discClear" class="action-btn clear-results">Clear Results</button>
+        </div>
+      </div>
     </section>
     <section id="view-settings" class="view">
-      <div class="section-header"><h3>Settings (Coming Soon)</h3></div>
-      <p>Settings UI migration pending.</p>
+      <div class="section-header"><h3>Application Settings</h3></div>
+      <div class="settings-panel discovery-panel">
+        <div class="disc-row">
+          <label class="chk-inline"><input type="checkbox" id="setDarkMode" /> Enable Dark Mode</label>
+        </div>
+        <div class="disc-row">
+          <label>Discovery Parallelism
+            <input id="setDiscoveryParallel" type="number" min="1" max="512" placeholder="64" />
+          </label>
+          <label>Discovery Ping Timeout (ms)
+            <input id="setDiscoveryTimeout" type="number" min="50" max="5000" placeholder="400" />
+          </label>
+        </div>
+        <div class="disc-row">
+          <button id="btnSettingsSave" class="action-btn accent">Save Settings</button>
+          <span id="settingsStatus" style="font-size:11px;color:#555;margin-left:12px"></span>
+        </div>
+        <div class="disc-row" style="margin-top:6px"><h4 style="margin:0;font-size:13px">Manage Favorite Static IP Preset</h4></div>
+        <div class="disc-row" style="flex-wrap:wrap;gap:10px;align-items:flex-end">
+          <label>Favorite Slot
+            <select id="favSlot">
+              <option value="1">Favorite #1</option>
+              <option value="2">Favorite #2</option>
+              <option value="3">Favorite #3</option>
+              <option value="4">Favorite #4</option>
+            </select>
+          </label>
+          <label>IP
+            <input id="favIp" placeholder="192.168.1.10" />
+          </label>
+          <label>Subnet
+            <input id="favSubnet" placeholder="255.255.255.0" />
+          </label>
+          <label>Gateway
+            <input id="favGateway" placeholder="192.168.1.1" />
+          </label>
+          <button id="favSave" class="action-btn" style="min-width:140px">Save Favorite</button>
+          <span id="favSaveStatus" style="font-size:11px;color:#666"></span>
+        </div>
+      </div>
     </section>
   </main>
   <footer></footer>

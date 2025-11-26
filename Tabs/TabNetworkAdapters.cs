@@ -283,7 +283,8 @@ namespace NetworkUtilityApp.Tabs
                 HeaderText = header,
                 MinimumWidth = Math.Min(80, width),
                 Width = width,
-                ReadOnly = true
+                ReadOnly = true,
+                SortMode = DataGridViewColumnSortMode.Automatic
             };
 
         private static void AutoSizeColumns(DataGridView dgv)

@@ -15,6 +15,7 @@ namespace NetworkUtilityApp
         private Button btnGlobalLogClear;
         private Button btnGlobalLogSave;
         private SplitContainer splitMain;  // new split container hosting web view and log
+        private Panel pnlUnderline; // underline effect panel
 
         protected override void Dispose(bool disposing)
         {
@@ -49,9 +50,8 @@ namespace NetworkUtilityApp
             splitMain.Dock = DockStyle.Fill;
             splitMain.Orientation = Orientation.Horizontal;
             splitMain.Name = "splitMain";
-            splitMain.SplitterWidth = 1; // minimal visual bar
-            splitMain.IsSplitterFixed = true;
-            splitMain.BackColor = Color.White; // unify background
+            splitMain.SplitterWidth = 6; // restore visible grip
+            splitMain.IsSplitterFixed = false; // allow user adjustment
             splitMain.Panel1MinSize = 300;
             splitMain.Panel2MinSize = 140;
             splitMain.SplitterDistance = 650; // will adjust based on form size
@@ -71,7 +71,6 @@ namespace NetworkUtilityApp
             pnlGlobalLogInner.Dock = DockStyle.Fill;
             pnlGlobalLogInner.Padding = new Padding(10, 0, 10, 10);
             pnlGlobalLogInner.Name = "pnlGlobalLogInner";
-            pnlGlobalLogInner.BackColor = Color.White;
             pnlGlobalLogInner.Controls.Add(txtGlobalLog);
             pnlGlobalLogInner.Controls.Add(flowGlobalLogButtons);
             pnlGlobalLogInner.Controls.Add(lblGlobalLog);
@@ -87,9 +86,9 @@ namespace NetworkUtilityApp
             lblGlobalLog.Padding = new Padding(0, 4, 0, 0);
             lblGlobalLog.BorderStyle = BorderStyle.None;
             // underline effect panel
-            var underline = new Panel { Dock = DockStyle.Top, Height = 2, BackColor = Color.FromArgb(224,224,224) };
-            pnlGlobalLogInner.Controls.Add(underline);
-            pnlGlobalLogInner.Controls.SetChildIndex(underline, 1); // place right under label
+            pnlUnderline = new Panel { Dock = DockStyle.Top, Height = 2, BackColor = Color.FromArgb(224,224,224), Name = "pnlUnderline" };
+            pnlGlobalLogInner.Controls.Add(pnlUnderline);
+            pnlGlobalLogInner.Controls.SetChildIndex(pnlUnderline, 1); // place right under label
             // 
             // txtGlobalLog
             // 
