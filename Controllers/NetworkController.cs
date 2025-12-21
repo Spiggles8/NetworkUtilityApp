@@ -96,7 +96,6 @@ namespace NetworkUtilityApp.Controllers
                         Gateway = gateway?.Address.ToString() ?? string.Empty,
                         Status = nic.OperationalStatus.ToString(),
                         HardwareDetails = nic.Description,
-
                         // Convert the physical (MAC) address byte array to a readable hex string (AA:BB:CC).
                         MacAddress = string.Join(":", nic.GetPhysicalAddress().GetAddressBytes().Select(b => b.ToString("X2")))
                     });
@@ -172,14 +171,21 @@ namespace NetworkUtilityApp.Controllers
             if (!IsAdministrator())
                 return "[ERROR] Administrator privileges required. Run the app as Administrator.";
 
+            // Friendly validation so host can post empty values and get clear feedback
+            if (string.IsNullOrWhiteSpace(ip) || string.IsNullOrWhiteSpace(subnet))
+                return "[ERROR] IP and Subnet are required for static configuration.";
+
             try
             {
-                // Build ProcessStartInfo to run netsh with static configuration arguments.
+                // If gateway is empty, tell netsh 'none' and omit metric
+                var args = string.IsNullOrWhiteSpace(gateway)
+                    ? $"interface ip set address \"{adapterName}\" static {ip} {subnet} none"
+                    : $"interface ip set address \"{adapterName}\" static {ip} {subnet} {gateway} 1";
+
                 var psi = new ProcessStartInfo
                 {
                     FileName = "netsh",
-                    // The final '1' is the interface metric (priority) — adjust if necessary.
-                    Arguments = $"interface ip set address \"{adapterName}\" static {ip} {subnet} {gateway} 1",
+                    Arguments = args,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -194,10 +200,11 @@ namespace NetworkUtilityApp.Controllers
 
                 // If netsh reported an error, return it for the UI to display.
                 if (!string.IsNullOrWhiteSpace(error))
-                    return $"[ERROR] Failed to set Static IP on {adapterName}: {error.Trim()}";
+                    return $"[ERROR] Failed to set Static IP on {adapterName}: {error.Trim()}".Replace(" 1", string.Empty);
 
                 // Otherwise return a success message including the requested parameters.
-                return $"[SUCCESS] Static IP set on {adapterName} — IP: {ip}, Subnet: {subnet}, Gateway: {gateway}\n{output.Trim()}";
+                return $"[SUCCESS] Static IP set on {adapterName} — IP: {ip}, Subnet: {subnet}, Gateway: {gateway}" +
+                       (string.IsNullOrWhiteSpace(output) ? string.Empty : $"\n{output.Trim()}");
             }
             catch (Exception ex)
             {

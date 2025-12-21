@@ -19,9 +19,9 @@
   const favoriteSelect=document.getElementById('favoriteSelect');
   let refreshing=false;let firstLoad=true;
   if(refreshBtn) refreshBtn.addEventListener('click',()=>{if(refreshing) return;refreshing=true;adaptersBody.innerHTML='<tr class="loading"><td colspan="8">Refreshing...</td></tr>';post('adapters:request');});
-  if(btnDhcp) btnDhcp.addEventListener('click',()=>{const adapter=selAdapter.value;if(!adapter) return;post('adapters:setDhcp:'+adapter);});
-  if(btnStatic) btnStatic.addEventListener('click',()=>{const adapter=selAdapter.value;if(!adapter) return;const ip=ipAddress.value.trim();const mask=subnetMask.value.trim();const gw=gateway.value.trim();if(!ip||!mask) return;post('adapters:setStatic:'+adapter+'|'+ip+'|'+mask+'|'+gw);});
-  if(favoriteSelect) favoriteSelect.addEventListener('change',()=>{const opt=favoriteSelect.selectedOptions[0];if(!opt||!opt.value) return;ipAddress.value=opt.value;subnetMask.value=opt.dataset.subnet||'';gateway.value=opt.dataset.gateway||deriveGateway(opt.value);});
+  if(btnDhcp) btnDhcp.addEventListener('click',()=>{const adapter=selAdapter.value;/* always post even if adapter not selected */post('adapters:setDhcp:'+adapter);});
+  if(btnStatic) btnStatic.addEventListener('click',()=>{const adapter=selAdapter.value;/* always post even if adapter or inputs not selected */const ip=ipAddress.value.trim();const mask=subnetMask.value.trim();const gw=gateway.value.trim();post('adapters:setStatic:'+adapter+'|'+ip+'|'+mask+'|'+gw);});
+  if(favoriteSelect) favoriteSelect.addEventListener('change',()=>{const opt=favoriteSelect.selectedOptions[0];if(!opt||!opt.value) return;ipAddress.value=opt.value;subnetMask.value=opt.dataset.subnet||'';gateway.value=opt.dataset.gateway||'';});
 
   // Diagnostics
   const pingTarget=document.getElementById('pingTarget');

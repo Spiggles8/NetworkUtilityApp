@@ -1,17 +1,11 @@
 ﻿using NetworkUtilityApp.Services;
-using System;
-using System.IO;
-using System.Linq;
-using System.Windows.Forms;
 using Microsoft.Web.WebView2.Core;
 using System.Text.Json;
 using NetworkUtilityApp.Controllers;
 using NetworkUtilityApp.Helpers; // Added for FavoriteIpStore
-using System.Threading.Tasks;
 using System.Diagnostics;
-using System.Threading;
-using System.Text.Json.Serialization;
-using System.Drawing;
+using NetworkUtilityApp.Ui;
+
 
 namespace NetworkUtilityApp
 {
@@ -50,6 +44,13 @@ namespace NetworkUtilityApp
                 btnGlobalLogSave.Click += (_, __) => OnSaveLog();
         }
 
+        private static string GetDefaultLogPath()
+        {
+            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NetworkUtilityApp");
+            Directory.CreateDirectory(dir);
+            return Path.Combine(dir, "NetworkUtility_OutputLog.txt");
+        }
+
         /// <summary>
         /// Form load handler. Seeds the global log textbox from the existing log snapshot
         /// and runs any required per-tab initialization.
@@ -63,11 +64,32 @@ namespace NetworkUtilityApp
                 webView.CoreWebView2.Settings.AreDevToolsEnabled = true;
                 webView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
                 var indexPath = Path.Combine(AppContext.BaseDirectory, "wwwroot", "index.html");
-                if (File.Exists(indexPath)) webView.CoreWebView2.Navigate(indexPath); else AppendToGlobalLog("[ERROR] index.html not found in wwwroot.");
+                if (File.Exists(indexPath)) webView.CoreWebView2.Navigate(indexPath); else AppendToGlobalLog("index.html not found in wwwroot.");
+
+                // Load persisted output log into the textbox (do not re-log to AppLog to avoid duplicates)
+                var defaultLog = GetDefaultLogPath();
+                if (File.Exists(defaultLog))
+                {
+                    try
+                    {
+                        var existing = File.ReadAllText(defaultLog);
+                        if (!string.IsNullOrEmpty(existing) && txtGlobalLog != null)
+                        {
+                            var cleaned = existing.TrimEnd('\r','\n');
+                            txtGlobalLog.Text = cleaned;
+                            txtGlobalLog.SelectionStart = txtGlobalLog.TextLength;
+                            txtGlobalLog.ScrollToCaret();
+                        }
+                    }
+                    catch { /* ignore load errors */ }
+                }
+
                 LoadSettings();
                 ApplyTheme();
-                // Removed generic startup info lines; only meaningful operational events will log.
-                foreach (var e1 in AppLog.Snapshot()) AppendToGlobalLog(e1.ToString());
+
+                // Log application open event (this will append to UI via AppLog event once)
+                AppLog.Info($"App Opened at {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+
             }
             catch (Exception ex)
             {
@@ -98,22 +120,27 @@ namespace NetworkUtilityApp
                 else if (msg.Equals("adapters:request", StringComparison.OrdinalIgnoreCase))
                 {
                     var adapters = NetworkController.GetAdapters();
-                    AppLog.Info($"Adapter List Refreshed: Adapters returned = {adapters?.Count ?? 0}");
+                    AppLog.Success($"Adapter List Refreshed: Adapters returned = {adapters?.Count ?? 0}");
                     var payload = JsonSerializer.Serialize(adapters, JsonOpts);
                     PostMessageToWeb("adapters:data:" + payload);
                 }
                 else if (msg.StartsWith("adapters:setDhcp:", StringComparison.OrdinalIgnoreCase))
                 {
                     var adapter = msg["adapters:setDhcp:".Length..].Trim();
-                    if (!string.IsNullOrWhiteSpace(adapter))
+                    if (string.IsNullOrWhiteSpace(adapter))
                     {
-                        var result = NetworkController.SetDhcp(adapter);
-                        AppLog.Info(result);
-                        PostMessageToWeb("adapters:result:" + result);
-                        var adapters = NetworkController.GetAdapters();
-                        AppLog.Info($"Adapter List Refreshed (post DHCP): Adapters returned = {adapters?.Count ?? 0}");
-                        PostMessageToWeb("adapters:data:" + JsonSerializer.Serialize(adapters, JsonOpts));
+                        var err = "[setDHCP] No adapter selected.";
+                        AppLog.Error(err);
+                        PostMessageToWeb("adapters:result:" + err);
+                        try { AlertForm.ShowError(this, "No adapter selected.", "Set DHCP", _settings.DarkMode); } catch { }
+                        return;
                     }
+                    var result = NetworkController.SetDhcp(adapter);
+                    AppLog.Info(result);
+                    PostMessageToWeb("adapters:result:" + result);
+                    var adapters = NetworkController.GetAdapters();
+                    AppLog.Success($"Adapter List Refreshed (post DHCP): Adapters returned = {adapters?.Count ?? 0}");
+                    PostMessageToWeb("adapters:data:" + JsonSerializer.Serialize(adapters, JsonOpts));
                 }
                 else if (msg.StartsWith("adapters:setStatic:", StringComparison.OrdinalIgnoreCase))
                 {
@@ -125,13 +152,24 @@ namespace NetworkUtilityApp
                         var ip = parts[1].Trim();
                         var mask = parts[2].Trim();
                         var gw = parts[3].Trim();
-                        if (!string.IsNullOrWhiteSpace(adapter) && !string.IsNullOrWhiteSpace(ip) && !string.IsNullOrWhiteSpace(mask))
+
+                        // Explicit error when no adapter selected
+                        if (string.IsNullOrWhiteSpace(adapter))
+                        {
+                            var err = "[setStatic] No adapter selected.";
+                            AppLog.Error(err);
+                            PostMessageToWeb("adapters:result:" + err);
+                            try { AlertForm.ShowError(this, "No adapter selected.", "Set Static", _settings.DarkMode); } catch { }
+                            return;
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(ip) && !string.IsNullOrWhiteSpace(mask))
                         {
                             var result = NetworkController.SetStatic(adapter, ip, mask, gw);
                             AppLog.Info(result);
                             PostMessageToWeb("adapters:result:" + result);
                             var adapters = NetworkController.GetAdapters();
-                            AppLog.Info($"Adapter List Refreshed (post static): Adapters returned = {adapters?.Count ?? 0}");
+                            AppLog.Success($"Adapter List Refreshed (post static): Adapters returned = {adapters?.Count ?? 0}");
                             PostMessageToWeb("adapters:data:" + JsonSerializer.Serialize(adapters, JsonOpts));
                         }
                     }
@@ -144,7 +182,7 @@ namespace NetworkUtilityApp
                         subnet = FavoriteIpStore.Get(slot)?.Subnet,
                         gateway = FavoriteIpStore.Get(slot)?.Gateway
                     });
-                    AppLog.Info("Favorites loaded.");
+                    // Suppress startup noise: don't log on favorites load requests
                     PostMessageToWeb("favorites:data:" + JsonSerializer.Serialize(favs, JsonOpts));
                 }
                 else if (msg.StartsWith("favorites:save:", StringComparison.OrdinalIgnoreCase))
@@ -159,12 +197,12 @@ namespace NetworkUtilityApp
                         if (!string.IsNullOrWhiteSpace(ip) && !string.IsNullOrWhiteSpace(subnet))
                         {
                             FavoriteIpStore.Save(slot, new FavoriteIpEntry { Ip = ip, Subnet = subnet, Gateway = string.IsNullOrWhiteSpace(gateway)?"":gateway });
-                            AppLog.Info($"Saved favorite slot {slot}: {ip}/{subnet}{(string.IsNullOrWhiteSpace(gateway)?"":"/"+gateway)}");
+                            AppLog.Success($"Saved favorite slot {slot}: {ip}/{subnet}{(string.IsNullOrWhiteSpace(gateway)?"":"/"+gateway)}");
                             PostMessageToWeb("favorites:save:Saved favorite slot " + slot);
                         }
                         else
                         {
-                            AppLog.Info("Invalid favorite data provided.");
+                            AppLog.Error("Invalid favorite data provided.");
                             PostMessageToWeb("favorites:save:Invalid favorite data.");
                         }
                     }
@@ -185,13 +223,13 @@ namespace NetworkUtilityApp
                             }
                             catch (Exception ex)
                             {
-                                AppLog.Info("[CANCEL ERROR] Failed to kill process: " + ex.Message);
+                                AppLog.Error("Failed to kill process: " + ex.Message);
                             }
                         }
                         _currentDiagProcess = null;
                         _currentDiagTag = null;
                     }
-                    AppLog.Info(canceled && tag!=null ? $"[CANCEL] Cancelled {tag} command." : "[CANCEL] No active diagnostic command to cancel.");
+                    AppLog.Info(canceled && tag!=null ? $"Cancelled {tag} command." : "No active diagnostic command to cancel.");
                 }
                 else if (msg.StartsWith("trace:", StringComparison.OrdinalIgnoreCase))
                 {
@@ -204,7 +242,7 @@ namespace NetworkUtilityApp
                     {
                         if (_currentDiagProcess != null && !_currentDiagProcess.HasExited)
                         {
-                            AppLog.Info("[TRACE] Another diagnostic is running. Cancel it first.");
+                            AppLog.Warn("[TRACE] Another diagnostic is running. Cancel it first.");
                             return;
                         }
                         _currentDiagTag = "TRACE";
@@ -220,7 +258,7 @@ namespace NetworkUtilityApp
                     {
                         if (_currentDiagProcess != null && !_currentDiagProcess.HasExited)
                         {
-                            AppLog.Info("[NSLOOKUP] Another diagnostic is running. Cancel it first.");
+                            AppLog.Warn("[NSLOOKUP] Another diagnostic is running. Cancel it first.");
                             return;
                         }
                         _currentDiagTag = "NSLOOKUP";
@@ -236,7 +274,7 @@ namespace NetworkUtilityApp
                     {
                         if (_currentDiagProcess != null && !_currentDiagProcess.HasExited)
                         {
-                            AppLog.Info("[PATHPING] Another diagnostic is running. Cancel it first.");
+                            AppLog.Warn("[PATHPING] Another diagnostic is running. Cancel it first.");
                             return;
                         }
                         _currentDiagTag = "PATHPING";
@@ -255,10 +293,6 @@ namespace NetworkUtilityApp
                     var payload = JsonSerializer.Serialize(adapters, JsonOpts);
                     PostMessageToWeb("disc:adapters:" + payload);
                 }
-                else if (msg.Equals("disc:autofill", StringComparison.OrdinalIgnoreCase))
-                {
-                    // deprecated: automatic fill handled client-side on selection
-                }
                 else if (msg.StartsWith("disc:start:", StringComparison.OrdinalIgnoreCase))
                 {
                     var parts = msg["disc:start:".Length..].Split('|');
@@ -269,19 +303,19 @@ namespace NetworkUtilityApp
                     if (string.IsNullOrWhiteSpace(startIp) || string.IsNullOrWhiteSpace(endIp)) return;
                     if (_discCts != null)
                     {
-                        AppLog.Info("[DISC] Scan already running. Cancel first.");
+                        AppLog.Warn("[DISC] Scan already running. Cancel first.");
                         return;
                     }
                     if (!Helpers.ValidationHelper.IsValidIPv4(startIp) || !Helpers.ValidationHelper.IsValidIPv4(endIp))
                     {
-                        AppLog.Info("[DISC] Invalid start or end IP.");
+                        AppLog.Error("[DISC] Invalid start or end IP.");
                         return;
                     }
                     long startVal = IpToLong(startIp);
                     long endVal = IpToLong(endIp);
                     if (endVal < startVal)
                     {
-                        AppLog.Info("[DISC] End IP must be >= Start IP.");
+                        AppLog.Warn("[DISC] End IP must be >= Start IP.");
                         return;
                     }
                     _discCts = new CancellationTokenSource();
@@ -316,12 +350,12 @@ namespace NetworkUtilityApp
                                     UpdateDiscStats();
                                 }
                                 catch (OperationCanceledException) { }
-                                catch (Exception exProbe) { AppLog.Info("[DISC ERROR] " + exProbe.Message); }
+                                catch (Exception exProbe) { AppLog.Error("[DISC ERROR] " + exProbe.Message); }
                                 finally { sem.Release(); }
                             }).ToArray();
                             await Task.WhenAll(tasks);
                             if (!_discCancelled && !_discCts.IsCancellationRequested)
-                                AppLog.Info($"[DISC] Scan completed. Active hosts: {_discActive}");
+                                AppLog.Success($"[DISC] Scan completed. Active hosts: {_discActive}");
                             else
                                 AppLog.Info($"[DISC] Scan terminated early. Scanned {_discScanned} / {_discTotal} hosts.");
                             UpdateDiscStats();
@@ -333,7 +367,7 @@ namespace NetworkUtilityApp
                         }
                         catch (Exception ex2)
                         {
-                            AppLog.Info("[DISC ERROR] " + ex2.Message);
+                            AppLog.Error("[DISC ERROR] " + ex2.Message);
                         }
                         finally
                         {
@@ -392,11 +426,11 @@ namespace NetworkUtilityApp
                             }
                         }
                         System.IO.File.WriteAllLines(dlg.FileName, lines);
-                        AppLog.Info($"[DISC] Results saved to: {dlg.FileName}");
+                        AppLog.Success($"[disc] Results saved to: {dlg.FileName}");
                     }
                     catch (Exception exSave)
                     {
-                        AppLog.Info("[DISC ERROR] Failed to save: " + exSave.Message);
+                        AppLog.Error("Failed to save: " + exSave.Message);
                     }
                 }
                 else if (msg.Equals("disc:reset", StringComparison.OrdinalIgnoreCase))
@@ -424,7 +458,7 @@ namespace NetworkUtilityApp
                         SaveSettings();
                         ApplyTheme();
                         PostMessageToWeb("settings:save:Settings saved.");
-                        AppLog.Info("[SETTINGS] Saved.");
+                        AppLog.Success("[SETTINGS] Saved.");
                     }
                 }
             }
@@ -462,7 +496,6 @@ namespace NetworkUtilityApp
                 return;
             }
             AppendToGlobalLog(e.ToString());
-            // Removed PostMessageToWeb("log:" + e.ToString()); to avoid stray log text in Web UI
         }
 
         private void AppendToGlobalLog(string line)
@@ -488,17 +521,25 @@ namespace NetworkUtilityApp
         {
             try
             {
+                var defaultPath = GetDefaultLogPath();
+                var defaultDir = Path.GetDirectoryName(defaultPath)!;
+                Directory.CreateDirectory(defaultDir);
+
                 using var dlg = new SaveFileDialog
                 {
-                    Title = "Save Log As",
+                    Title = "Save Output Log As",
                     Filter = "Text Files (*.txt)|*.txt|All Files (*.*)|*.*",
-                    FileName = $"NetworkUtilityLog_{DateTime.Now:yyyyMMdd_HHmmss}.txt",
+                    FileName = Path.GetFileName(defaultPath),
+                    InitialDirectory = defaultDir,
                     OverwritePrompt = true
                 };
+
                 if (dlg.ShowDialog(this) != DialogResult.OK) return;
+
+                // Log the save event first so it is included in the saved file
+                AppLog.Success($"[LOG] Saved to: {dlg.FileName} at {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
                 var snapshot = AppLog.Snapshot();
                 File.WriteAllLines(dlg.FileName, snapshot.Select(s => s.ToString()));
-                AppLog.Info($"Log saved to: {dlg.FileName}");
             }
             catch (Exception ex)
             {
@@ -531,6 +572,19 @@ namespace NetworkUtilityApp
         {
             try
             {
+                var now = DateTime.Now;
+                var pathLog = GetDefaultLogPath();
+
+                // Log save event first so it appears in the saved file
+                AppLog.Success($"Saved to: {pathLog} at {now:yyyy-MM-dd HH:mm:ss}");
+                // Then log the app closing event
+                AppLog.Info($"App closed at {now:yyyy-MM-dd HH:mm:ss}");
+
+                // Persist the full snapshot including the two lines above
+                var snapshot = AppLog.Snapshot();
+                File.WriteAllLines(pathLog, snapshot.Select(s => s.ToString()));
+
+                // Persist window state
                 var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NetworkUtilityApp", WindowStateFile);
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
                 var state = new {
@@ -581,28 +635,6 @@ namespace NetworkUtilityApp
             public bool TraceResolve { get; set; }   // NEW
         }
 
-        private static string RunExternalTool(string fileName, string args, int timeoutMs)
-        {
-            using var p = new System.Diagnostics.Process
-            {
-                StartInfo = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = fileName,
-                    Arguments = args,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                }
-            };
-            p.Start();
-            var stdout = p.StandardOutput.ReadToEnd();
-            var stderr = p.StandardError.ReadToEnd();
-            if (!p.WaitForExit(timeoutMs)) return "[ERROR] Command timed out.";
-            var text = (stdout + (string.IsNullOrWhiteSpace(stderr) ? "" : "\n" + stderr)).Trim();
-            return string.IsNullOrWhiteSpace(text) ? "[INFO] No output." : text;
-        }
-
         private void StreamTrace(string target, bool resolve)
         {
             Process? localProc = null;
@@ -632,12 +664,12 @@ namespace NetworkUtilityApp
                 }
                 string err = localProc.StandardError.ReadToEnd();
                 localProc.WaitForExit();
-                if (!string.IsNullOrWhiteSpace(err)) AppLog.Info("[TRACE ERROR] " + err.Trim());
-                AppLog.Info($"[TRACE] Completed: {target}");
+                if (!string.IsNullOrWhiteSpace(err)) AppLog.Error("[TRACE ERROR] " + err.Trim());
+                AppLog.Success($"[TRACE] Completed: {target}");
             }
             catch (Exception ex)
             {
-                AppLog.Info("[ERROR] Traceroute failed: " + ex.Message);
+                AppLog.Error("[TRACE] Traceroute failed: " + ex.Message);
             }
             finally
             {
@@ -670,7 +702,7 @@ namespace NetworkUtilityApp
                 {
                     if (timeoutMs > 0 && sw.ElapsedMilliseconds > timeoutMs)
                     {
-                        AppLog.Info($"[{tag}] Timeout exceeded.");
+                        AppLog.Warn($"[{tag}] Timeout exceeded.");
                         try { localProc.Kill(true); } catch { }
                         return;
                     }
@@ -681,12 +713,12 @@ namespace NetworkUtilityApp
                 }
                 string err = localProc.StandardError.ReadToEnd();
                 localProc.WaitForExit();
-                if (!string.IsNullOrWhiteSpace(err)) AppLog.Info($"[{tag} ERROR] " + err.Trim());
-                AppLog.Info($"[{tag}] Completed.");
+                if (!string.IsNullOrWhiteSpace(err)) AppLog.Error($"[{tag} ERROR] " + err.Trim());
+                AppLog.Success($"[{tag}] Completed.");
             }
             catch (Exception ex)
             {
-                AppLog.Info($"[ERROR] {tag} failed: {ex.Message}");
+                AppLog.Error($"[ERROR] {tag} failed: {ex.Message}");
             }
             finally
             {
@@ -803,11 +835,13 @@ namespace NetworkUtilityApp
         {
             try { _discCancelled = true; _discCts?.Cancel(); } catch { }
             _discSw?.Stop();
-            _discScanned = 0; _discActive = 0; _discTotal = 0;
+            _discScanned = 0;
+            _discActive = 0;
+            _discTotal = 0;
             lock (_discResults) _discResults.Clear();
             if (includeArp) _arpCache.Clear();
             PostMessageToWeb("disc:clear");
-            AppLog.Info("[DISC] State reset.");
+            AppLog.Info("State reset.");
         }
 
         private void LoadSettings()
