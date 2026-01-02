@@ -1,58 +1,115 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Document metadata and stylesheet link -->
   <meta charset="UTF-8" />
   <title>Network Utility App</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <!-- ======================= Top Navigation ======================= -->
   <header>
     <nav>
+      <!-- Tab buttons control which view section is visible -->
       <button class="tab-btn active" data-view="adapters" aria-label="Adapters">Adapters</button>
-      <button class="tab-btn" data-view="diagnostics" aria-label="Diagnostics">Diagnostics</button>
       <button class="tab-btn" data-view="discovery" aria-label="Discovery">Discovery</button>
+      <button class="tab-btn" data-view="diagnostics" aria-label="Diagnostics">Diagnostics</button>
       <button class="tab-btn" data-view="settings" aria-label="Settings">Settings</button>
     </nav>
   </header>
+
+  <!-- ======================= Main Content ======================== -->
   <main>
+    <!-- ======================= Adapters View ======================= -->
     <section id="view-adapters" class="view active">
-      <!-- Adapters tab -->
+      <!-- Title -->
       <div class="section-header"><h3>Network Adapters Table</h3></div>
+      <!-- Adapters table area: lists local adapters and their properties -->
       <div class="adapters-table-area">
         <table id="tblAdapters" class="with-divider-bottom">
           <thead>
             <tr>
-              <th>Adapter</th><th>DHCP</th><th>IP Address</th><th>Subnet</th><th>Gateway</th><th>Status</th><th>Description</th><th>MAC</th>
+              <th>Adapter</th>
+              <th>DHCP?</th>
+              <th>IP Address</th>
+              <th>Subnet</th>
+              <th>Gateway</th>
+              <th>Status</th>
+              <th>Description</th>
+              <th>MAC Address</th>
             </tr>
           </thead>
           <tbody></tbody>
         </table>
         <div class="table-actions">
+          <!-- Refresh triggers host to send adapters:data snapshot -->
           <button id="btnRefreshAdapters" class="action-btn accent">Refresh Adapters</button>
         </div>
       </div>
+
+      <!-- Adapter adjustment controls: set DHCP or Static IP -->
       <div class="section-header top-spaced"><h3>Network Adapter Adjustment</h3></div>
       <div class="adapter-controls with-divider-top">
+        <!-- Selected adapter dropdown links to host-side adapter name -->
         <div class="row row-selected">
           <label>Selected Adapter
             <select id="selAdapter"></select>
           </label>
         </div>
-        <div class="row row-addressing">
-          <label>IP
-            <input id="ipAddress" placeholder="192.168.1.100" />
-          </label>
-          <label>Subnet
-            <input id="subnetMask" placeholder="255.255.255.0" />
-          </label>
-          <label>Gateway
-            <input id="gateway" placeholder="192.168.1.1" />
-          </label>
-        </div>
-        <div class="row row-mode">
+        <!-- DHCP action button -->
+        <div class="row">
           <button id="btnDhcp" class="action-btn accent">Set DHCP</button>
-          <button id="btnStatic" class="action-btn accent">Set Static IP</button>
         </div>
+        <!-- Static IP address inputs (IPv4 octets) -->
+        <div class="row ip-config">
+          <label>
+            IP Address
+            <span style="display:inline-flex;gap:6px;align-items:center">
+              <input id="ip1" class="ip-octet" type="number" min="0" max="255" placeholder="0" aria-label="IP Octet 1">
+              <span class="octet-dot">.</span>
+              <input id="ip2" class="ip-octet" type="number" min="0" max="255" placeholder="0" aria-label="IP Octet 2">
+              <span class="octet-dot">.</span>
+              <input id="ip3" class="ip-octet" type="number" min="0" max="255" placeholder="0" aria-label="IP Octet 3">
+              <span class="octet-dot">.</span>
+              <input id="ip4" class="ip-octet" type="number" min="0" max="255" placeholder="0" aria-label="IP Octet 4">
+            </span>
+          </label>
+        </div>
+        <!-- Subnet mask inputs (IPv4 octets) -->
+        <div class="row ip-config">
+          <label>
+            Subnet
+            <span style="display:inline-flex;gap:6px;align-items:center">
+              <input id="sub1" class="ip-octet" type="number" min="0" max="255" placeholder="255" aria-label="Subnet Octet 1">
+              <span class="octet-dot">.</span>
+              <input id="sub2" class="ip-octet" type="number" min="0" max="255" placeholder="255" aria-label="Subnet Octet 2">
+              <span class="octet-dot">.</span>
+              <input id="sub3" class="ip-octet" type="number" min="0" max="255" placeholder="255" aria-label="Subnet Octet 3">
+              <span class="octet-dot">.</span>
+              <input id="sub4" class="ip-octet" type="number" min="0" max="255" placeholder="0" aria-label="Subnet Octet 4">
+            </span>
+          </label>
+        </div>
+        <!-- Default gateway inputs (IPv4 octets) -->
+        <div class="row ip-config">
+          <label>
+            Gateway
+            <span style="display:inline-flex;gap:6px;align-items:center">
+              <input id="gw1" class="ip-octet" type="number" min="0" max="255" placeholder="0" aria-label="Gateway Octet 1">
+              <span class="octet-dot">.</span>
+              <input id="gw2" class="ip-octet" type="number" min="0" max="255" placeholder="0" aria-label="Gateway Octet 2">
+              <span class="octet-dot">.</span>
+              <input id="gw3" class="ip-octet" type="number" min="0" max="255" placeholder="0" aria-label="Gateway Octet 3">
+              <span class="octet-dot">.</span>
+              <input id="gw4" class="ip-octet" type="number" min="0" max="255" placeholder="0" aria-label="Gateway Octet 4">
+            </span>
+          </label>
+        </div>
+        <!-- Apply static settings -->
+        <div class="row">
+          <button id="btnStatic" class="action-btn">Set Static</button>
+        </div>
+        <!-- Favorites select populated by host-provided presets -->
         <div class="row favorites favorites-select">
           <label>Select Favorite Static IP
             <select id="favoriteSelect"><option value="">(none)</option></select>
@@ -60,8 +117,11 @@
         </div>
       </div>
     </section>
+
+    <!-- ======================= Diagnostics View ==================== -->
     <section id="view-diagnostics" class="view">
       <div class="section-header"><h3>Diagnostics</h3></div>
+      <!-- Ping block (supports continuous mode) -->
       <div class="diag-block">
         <label>Ping Target
           <input id="pingTarget" value="8.8.8.8" />
@@ -69,6 +129,7 @@
         <button id="btnPing" class="action-btn">Ping</button>
         <label class="chk-inline"><input type="checkbox" id="chkPingContinuous" /> Continuous</label>
       </div>
+      <!-- Traceroute block (resolve names toggle) -->
       <div class="diag-block">
         <label>Traceroute Target
           <input id="traceTarget" value="8.8.8.8" />
@@ -76,30 +137,37 @@
         <button id="btnTrace" class="action-btn">Traceroute</button>
         <label class="chk-inline"><input type="checkbox" id="chkTraceResolve" checked /> Resolve Names</label>
       </div>
+      <!-- NSLookup block -->
       <div class="diag-block">
         <label>NSLookup Target
           <input id="nsTarget" value="google.com" />
         </label>
         <button id="btnNslookup" class="action-btn">NSLookup</button>
       </div>
+      <!-- PathPing block -->
       <div class="diag-block">
         <label>PathPing Target
           <input id="pathPingTarget" value="8.8.8.8" />
         </label>
         <button id="btnPathPing" class="action-btn">PathPing</button>
       </div>
+      <!-- Cancel button for active diagnostic command -->
       <div class="diag-block" style="justify-content:flex-start">
         <button id="btnDiagCancel" class="action-btn danger">Cancel Command</button>
       </div>
     </section>
+
+    <!-- ======================= Discovery View ====================== -->
     <section id="view-discovery" class="view">
       <div class="section-header"><h3>Network Discovery</h3></div>
       <div class="discovery-panel">
+        <!-- Adapter selection (populated from adapters table list) -->
         <div class="disc-row">
           <label>Adapter
             <select id="discAdapter"></select>
           </label>
         </div>
+        <!-- IP range inputs (auto-filled based on adapter IP/subnet) -->
         <div class="disc-row">
           <label>Start IP
             <input id="discStartIp" placeholder="192.168.1.1" />
@@ -108,50 +176,52 @@
             <input id="discEndIp" placeholder="192.168.1.254" />
           </label>
         </div>
+        <!-- Discovery control buttons -->
         <div class="disc-row">
           <button id="discStart" class="action-btn accent">Start Scan</button>
           <button id="discCancel" class="action-btn danger">Cancel Scan</button>
         </div>
+        <!-- Progress/ETA indicators -->
         <div class="disc-row stats">
           <span id="discProgress">Progress: 0 / 0</span>
           <span id="discActive">Active: 0</span>
           <span id="discEta">ETA: --:--:--</span>
         </div>
+        <!-- Results table shows live probe results pushed by host -->
         <div class="disc-table-wrapper">
           <table id="discResults">
             <thead>
-              <tr><th>IP</th><th>Hostname</th><th>Latency (ms)</th><th>MAC</th><th>Vendor</th><th>Status</th></tr>
+              <tr><th>IP</th><th>Hostname</th><th>MAC</th><th>Vendor</th><th>Status</th></tr>
             </thead>
             <tbody></tbody>
           </table>
         </div>
-        <div class="disc-row">
+        <!-- Save and clear actions -->
+        <div class="disc-row buttons">
           <button id="discSave" class="action-btn">Save Results</button>
           <button id="discClear" class="action-btn clear-results">Clear Results</button>
         </div>
       </div>
     </section>
+
+    <!-- ======================= Settings View ======================= -->
     <section id="view-settings" class="view">
-      <div class="section-header"><h3>Application Settings</h3></div>
       <div class="settings-panel discovery-panel">
+        <!-- UI section (theme toggles, etc.) -->
+        <div class="disc-row"><h4 class="settings-title">UI</h4></div>
         <div class="disc-row">
           <label class="chk-inline"><input type="checkbox" id="setDarkMode" /> Enable Dark Mode</label>
         </div>
-        <div class="disc-row">
-          <label>Discovery Parallelism
-            <input id="setDiscoveryParallel" type="number" min="1" max="512" placeholder="64" />
-          </label>
-          <label>Discovery Ping Timeout (ms)
-            <input id="setDiscoveryTimeout" type="number" min="50" max="5000" placeholder="400" />
-          </label>
-        </div>
-        <div class="disc-row">
-          <button id="btnSettingsSave" class="action-btn accent">Save Settings</button>
-          <span id="settingsStatus" style="font-size:11px;color:#555;margin-left:12px"></span>
-        </div>
-        <div class="disc-row" style="margin-top:6px"><h4 style="margin:0;font-size:13px">Manage Favorite Static IP Preset</h4></div>
+
+        <!-- Adapters section: Favorite static IP presets -->
+        <div class="disc-row" style="margin-top:12px"><h4 class="settings-title">Adapters</h4></div>
         <div class="disc-row" style="flex-wrap:wrap;gap:10px;align-items:flex-end">
-          <label>Favorite Slot
+          <label class="chk-inline"><input type="checkbox" id="setShowVirtual" /> Show virtual adapters</label>
+          <label class="chk-inline"><input type="checkbox" id="setShowLoopback" /> Show loopback</label>
+          <label class="chk-inline"><input type="checkbox" id="setShowBluetooth" /> Show Bluetooth adapters</label>
+        </div>
+        <div class="disc-row" style="flex-wrap:wrap;gap:10px;align-items:flex-end">
+          <label>Favorite IP Addresses
             <select id="favSlot">
               <option value="1">Favorite #1</option>
               <option value="2">Favorite #2</option>
@@ -168,13 +238,50 @@
           <label>Gateway
             <input id="favGateway" placeholder="192.168.1.1" />
           </label>
+          <!-- Saves preset into host-side favorites store -->
           <button id="favSave" class="action-btn" style="min-width:140px">Save Favorite</button>
           <span id="favSaveStatus" style="font-size:11px;color:#666"></span>
+        </div>
+
+        <!-- Default Subnet setting row -->
+        <div class="disc-row" style="flex-wrap:wrap;gap:10px;align-items:flex-end">
+            <label>Default Subnet </label>
+            <div class="ip-config" style="display:flex;align-items:center;gap:6px">
+              <input id="defSub1" class="ip-octet" inputmode="numeric" value="255" />
+              <span class="octet-dot">.</span>
+              <input id="defSub2" class="ip-octet" inputmode="numeric" value="255" />
+              <span class="octet-dot">.</span>
+              <input id="defSub3" class="ip-octet" inputmode="numeric" value="255" />
+              <span class="octet-dot">.</span>
+              <input id="defSub4" class="ip-octet" inputmode="numeric" value="0" />
+            </div>
+        </div>
+
+        <!-- Network Discovery section: tuneables and resolver toggles -->
+        <div class="disc-row" style="margin-top:12px"><h4 class="settings-title">Network Discovery</h4></div>
+        <div class="disc-row">
+          <label>Discovery Parallelism
+            <input id="setDiscoveryParallel" type="number" min="1" max="512" placeholder="64" />
+          </label>
+          <label>Discovery Ping Timeout (ms)
+            <input id="setDiscoveryTimeout" type="number" min="50" max="5000" placeholder="400" />
+          </label>
+        </div>
+        <!-- Resolver toggles control which naming methods are attempted by host -->
+        <div class="disc-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+          <span class="settings-subtitle">Name Resolution Methods</span>
+          <label class="chk-inline"><input type="checkbox" id="setEnableLlmnr" checked /> Enable LLMNR</label>
+          <label class="chk-inline"><input type="checkbox" id="setEnableMdns" checked /> Enable mDNS</label>
+          <label class="chk-inline"><input type="checkbox" id="setEnableNbns" checked /> Enable NBNS</label>
+          <label class="chk-inline"><input type="checkbox" id="setEnableNbtstat" checked /> Enable NetBIOS (nbtstat)</label>
         </div>
       </div>
     </section>
   </main>
+
+  <!-- ======================= Footer/Script ======================== -->
   <footer></footer>
+  <!-- App JavaScript handles tab switching, data bindings, and host messaging -->
   <script src="app.js"></script>
 </body>
 </html>

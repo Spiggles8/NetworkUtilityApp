@@ -1,7 +1,3 @@
-using System;
-using System.Threading;
-using System.Windows.Forms;
-
 namespace NetworkUtilityApp
 {
     internal static class Program
@@ -10,6 +6,7 @@ namespace NetworkUtilityApp
         private const bool USE_SINGLE_INSTANCE = false;
 
         [STAThread]
+        [Obsolete]
         private static void Main()
         {
             // High DPI + classic WinForms look

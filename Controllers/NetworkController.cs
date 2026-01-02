@@ -87,17 +87,14 @@ namespace NetworkUtilityApp.Controllers
                     adaptersList.Add(new NetworkAdapterInfo
                     {
                         AdapterName = nic.Name,
-
-                        // Some NICs may not have IPv4 properties; use null-conditional to avoid exceptions.
-                        // We convert boolean DHCP state to "Yes"/"No" strings for display.
-                        IsDhcp = props.GetIPv4Properties()?.IsDhcpEnabled == true ? "Yes" : "No",
+                        IsDhcp = props.GetIPv4Properties()?.IsDhcpEnabled == true ? "DHCP" : "STATIC",
                         IpAddress = ipv4?.Address.ToString() ?? string.Empty,
                         Subnet = ipv4?.IPv4Mask?.ToString() ?? string.Empty,
                         Gateway = gateway?.Address.ToString() ?? string.Empty,
                         Status = nic.OperationalStatus.ToString(),
                         HardwareDetails = nic.Description,
-                        // Convert the physical (MAC) address byte array to a readable hex string (AA:BB:CC).
-                        MacAddress = string.Join(":", nic.GetPhysicalAddress().GetAddressBytes().Select(b => b.ToString("X2")))
+                        // Normalize MAC as colon-delimited uppercase (AA:BB:CC:DD:EE:FF)
+                        MacAddress = NormalizeMac(nic.GetPhysicalAddress().ToString())
                     });
                 }
             }
@@ -111,6 +108,16 @@ namespace NetworkUtilityApp.Controllers
                 });
             }
             return adaptersList;
+        }
+
+        // Normalize MAC strings from various formats into colon-delimited uppercase.
+        private static string NormalizeMac(string raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return string.Empty;
+            var hex = new string(raw.Where(c => Uri.IsHexDigit(c)).ToArray());
+            if (hex.Length < 12) return raw; // fallback to original if unexpected
+            hex = hex.Substring(0, 12).ToUpperInvariant();
+            return string.Join(":", Enumerable.Range(0, 6).Select(i => hex.Substring(i * 2, 2)));
         }
 
         // -----------------------

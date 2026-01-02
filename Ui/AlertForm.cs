@@ -33,12 +33,11 @@ namespace NetworkUtilityApp.Ui
 
             _label = new Label
             {
-                AutoSize = false,
+                AutoSize = true,
                 Text = message,
                 Left = 12,
                 Top = 12,
-                Width = 380,
-                Height = 90,
+                MaximumSize = new Size(380, 0),
                 ForeColor = fore,
                 BackColor = Color.Transparent
             };
@@ -50,11 +49,13 @@ namespace NetworkUtilityApp.Ui
                 Width = 80,
                 Height = 28,
                 Left = 320,
-                Top = 110,
+                Top = _label.Bottom + 20,
                 BackColor = darkMode ? Color.FromArgb(20,111,20) : Color.FromArgb(20,111,20),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Standard
             };
+
+            Height = _ok.Bottom + 60;
 
             Controls.Add(_label);
             Controls.Add(_ok);

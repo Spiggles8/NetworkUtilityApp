@@ -7,7 +7,6 @@ namespace NetworkUtilityApp.Tabs
     public partial class TabNetworkAdapters : UserControl
     {
         private readonly NetworkController _controller = new();
-        private readonly string? _selectedAdapter;
 
         public TabNetworkAdapters()
         {
@@ -21,7 +20,7 @@ namespace NetworkUtilityApp.Tabs
                 RefreshFavoriteButtons();
             }
         }
-
+         
         public static void Initialize()
         {
 
@@ -34,7 +33,7 @@ namespace NetworkUtilityApp.Tabs
                 // No-op refresh in WinForms tab; WebView2 manages adapter listing.
                 var lblSelected = Controls.Find("lblSelectedAdapter", true).FirstOrDefault() as Label;
                 if (lblSelected is not null)
-                    lblSelected.Text = "Selected Adapter: " + (_selectedAdapter ?? "None");
+                    lblSelected.Text = "Selected Adapter: None";
             }
             catch (Exception ex)
             {
@@ -123,7 +122,6 @@ namespace NetworkUtilityApp.Tabs
                 SortMode = DataGridViewColumnSortMode.Automatic
             };
 
-        // No instance data accessed; mark static.
         private static void AppendLog(string message)
         {
             AppLog.Info(message);

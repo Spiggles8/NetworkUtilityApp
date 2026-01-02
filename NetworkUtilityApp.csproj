@@ -61,4 +61,11 @@
     </Content>
   </ItemGroup>
 
+  <!-- Ensure mac vendors JSON is copied to output for runtime lookup -->
+  <ItemGroup>
+    <Content Include="Helpers\mac-vendors-export.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

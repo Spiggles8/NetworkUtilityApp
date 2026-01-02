@@ -1,30 +1,40 @@
-/* Theme variables: base colors and UI tokens used across the app */
+/* =============================================================
+   Theme Variables
+   ============================================================= */
+/* Base (light) theme tokens */
 :root{--bg:#fafafa;--text:#222;--border:#ddd;--muted:#555;--card:#fff;--thead:#f6f6f6;--row-alt:#f7f7f7;--row-hover:#eef6ff;--tab-bg:#f3f3f3;--tab-border:#ccc;--accent:#0e639c;--accent2:#0078d4;--header-bg:#fff}
-
-/* Global layout: vertical app column with a fixed top nav offset */
-body{font-family:Segoe UI,Arial,sans-serif;margin:0;display:flex;flex-direction:column;min-height:100vh;color:var(--text);background:var(--bg);padding-top:56px}
-
-/* Dark theme tokens override base variables; header/nav uses --header-bg */
+/* Dark theme overrides (applied when body.dark is present) */
 body.dark{--bg:#1e1e1e;--text:#e6e6e6;--border:#3a3a3a;--muted:#b0b0b0;--card:#252526;--thead:#2c2c2c;--row-alt:#232323;--row-hover:#2a3b52;--tab-bg:#2a2a2a;--tab-border:#3a3a3a;--accent:#0e639c;--accent2:#0078d4;--header-bg:#000}
 
+/* =============================================================
+   App Layout (Body, Header, Nav, Main, Footer)
+   ============================================================= */
+/* Global layout: vertical app column with a fixed top nav offset */
+body{font-family:Segoe UI,Arial,sans-serif;margin:0;display:flex;flex-direction:column;min-height:100vh;color:var(--text);background:var(--bg);padding-top:56px}
 /* Top header container (non-sticky), primarily for title area */
 header{background:var(--card);border-bottom:1px solid var(--border);padding:4px 8px;display:flex;justify-content:flex-start}
-
 /* Sticky top tab bar: fixed to viewport, uses theme header background */
 nav{display:flex;gap:4px;position:fixed;top:0;left:0;right:0;background:var(--header-bg);z-index:1000;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+/* Dark mode: enforce header theme */
+body.dark nav{background:var(--header-bg)!important;color:#fff}
+body.dark nav .tab-btn{color:#fff}
 
-/* Tab buttons: neutral until active; rely on theme tokens for colors */
+/* =============================================================
+   Tabs and Views
+   ============================================================= */
+/* Tab buttons */
 .tab-btn{background:var(--tab-bg);border:1px solid var(--tab-border);border-radius:4px;padding:6px 14px;font-size:13px;cursor:pointer;transition:.15s ease;color:var(--text);position:relative}
 .tab-btn:hover{background:var(--row-hover)}
 .tab-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
 .tab-btn:focus-visible{outline:2px solid #0e639c}
-
-/* Main content and view switching */
+/* View switching */
 main{flex:1;padding:12px}
 .view{display:none}
 .view.active{display:block}
 
-/* Action buttons and generic controls */
+/* =============================================================
+   Generic Controls (Buttons, Inputs, Helpers)
+   ============================================================= */
 .actions{margin-bottom:8px;display:flex;gap:8px}
 .action-btn{background:var(--accent);color:#fff;border:1px solid var(--accent);border-radius:4px;padding:6px 12px;font-size:13px;cursor:pointer;transition:.15s}
 .action-btn.accent{background:var(--accent2);border-color:var(--accent2)}
@@ -34,99 +44,106 @@ main{flex:1;padding:12px}
 .action-btn.danger{background:#c0392b!important;border-color:#c0392b!important;color:#fff}
 .action-btn.danger:hover{filter:brightness(0.95)!important}
 
-/* Adapter controls and IP config inputs */
-.adapter-controls{display:flex;flex-direction:column;gap:0;margin-bottom:10px;font-size:13px}
-.adapter-controls .row{display:flex;flex-wrap:wrap;align-items:center;gap:14px}
-.adapter-controls label{color:var(--text);display:flex;flex-direction:column;font-size:11px;font-weight:600;min-width:150px}
-.adapter-controls input, .adapter-controls select, input, select{padding:6px 8px;font-size:13px;border:1px solid var(--tab-border);border-radius:4px;color:var(--text);background:var(--card)}
-.ip-config input{min-width:140px}
-
-/* Favorites UI controls */
-.favorites .fav-btn{background:#ffffff;border:1px solid #888;border-radius:4px;padding:6px 12px;font-size:12px;cursor:pointer;min-width:90px;transition:.15s;box-shadow:0 1px 2px rgba(0,0,0,.08)}
-.favorites .fav-btn:hover:not(:disabled){background:#eef6ff;border-color:#0e639c}
-.favorites .fav-btn:active:not(:disabled){background:#d7ecff}
-.favorites .fav-btn:disabled{opacity:.45;cursor:not-allowed}
-.favorites-right{justify-content:flex-end}
-.fav-label{font-weight:700;margin-right:8px}
-
-/* Minor control button */
-.mini-btn{background:#555;color:#fff;border:1px solid #555;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer}
-.mini-btn:hover{background:#333}
-
-/* Status line text */
-.status-line{font-size:12px;color:#555;padding:2px 4px;min-height:16px}
-
-/* Adapters table styling */
-#tblAdapters{border-collapse:collapse;width:100%;font-size:13px}
-#tblAdapters th,#tblAdapters td{border:1px solid var(--border);padding:4px 6px;text-align:left;color:var(--text)}
-#tblAdapters th{background:var(--thead);font-weight:600}
-.adapters-table-area{min-height:260px;position:relative}
-#tblAdapters tbody tr.selected{background:#444!important;color:#fff}
-#tblAdapters tbody tr:hover{background:var(--row-hover)}
-#tblAdapters tbody tr.selected:hover{filter:brightness(0.95)}
-
-/* Diagnostics section blocks */
-.diag-block{margin-top:14px;display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px;max-width:760px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:6px}
-.diag-block label{font-size:11px;font-weight:600;color:var(--text);display:flex;flex-direction:column}
-.chk-inline{flex-direction:row!important;align-items:center;font-weight:600;margin-right:18px}
-.chk-inline input{margin-right:6px;margin-top:0}
-.diag-output{background:var(--row-alt);border:1px solid var(--border);padding:8px;font-size:12px;max-height:180px;overflow:auto;border-radius:4px;white-space:pre-wrap;color:var(--text)}
-
 /* Generic form inputs */
 input{padding:6px 8px;font-size:13px;border:1px solid var(--tab-border);border-radius:4px}
 input:focus{outline:2px solid var(--accent);border-color:var(--accent)}
 button{font-family:inherit}
 
-/* Footer area */
-footer{background:var(--thead);padding:6px 12px;text-align:center;font-size:12px;border-top:1px solid var(--border)}
-
-/* Ping result text block */
-#pingResult{margin-top:6px;font-size:12px;color:var(--text);white-space:pre-wrap}
-
-/* General spacing helpers */
+/* Spacing and section headers */
 .bottom-controls{margin-top:8px}
 .section-header{margin:8px 0 8px;padding:4px 0;border-bottom:1px solid var(--border)}
 .section-header h3{margin:0;font-size:15px;font-weight:700;color:var(--text);letter-spacing:.3px}
 .with-divider-bottom{margin-bottom:28px;border-bottom:2px solid var(--border);padding-bottom:12px}
 .with-divider-top{border-top:2px solid var(--border);padding-top:10px;margin-top:12px}
-.table-actions{margin:0 0 16px;display:flex;justify-content:flex-start}
-.table-actions .action-btn{min-width:160px}
-.row-selected{margin-bottom:8px}
-.row-addressing{margin-bottom:8px}
-.row-mode{margin-bottom:10px}
 .top-spaced{margin-top:32px}
 
-/* Discovery table styling with sticky thead */
+/* =============================================================
+   Adapters Tab (Controls + Table)
+   ============================================================= */
+/* Adapter controls and IP config inputs */
+.adapter-controls{display:flex;flex-direction:column;gap:0;margin-bottom:10px;font-size:13px}
+.adapter-controls .row{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-bottom:12px}
+.adapter-controls .row:last-child{margin-bottom:0}
+.adapter-controls label{color:var(--text);display:flex;flex-direction:column;font-size:11px;font-weight:600;min-width:150px;gap:6px}
+.adapter-controls input, .adapter-controls select, input, select{padding:6px 8px;font-size:13px;border:1px solid var(--tab-border);border-radius:4px;color:var(--text);background:var(--card)}
+.ip-config input{min-width:140px}
+/* Compact inputs for IPv4 octets */
+.ip-config .ip-octet{width:54px;min-width:54px;padding:6px 6px;text-align:center}
+/* Dot separator spacing */
+.ip-config .octet-dot{display:inline-block;width:8px;text-align:center}
+
+/* Adapters table */
+#tblAdapters{border-collapse:collapse;width:100%;font-size:13px}
+#tblAdapters th,#tblAdapters td{border:1px solid var(--border);padding:4px 6px;text-align:left;color:var(--text)}
+#tblAdapters th{background:var(--thead);font-weight:600}
+.adapters-table-area{min-height:260px;position:relative;resize:vertical;overflow:auto;max-height:50vh;min-height:140px}
+#tblAdapters tbody tr.selected{background:#444!important;color:#fff}
+#tblAdapters tbody tr:hover{background:var(--row-hover)}
+#tblAdapters tbody tr.selected:hover{filter:brightness(0.95)}
+
+/* Table actions */
+.table-actions{margin:0 0 16px;display:flex;justify-content:flex-start}
+.table-actions .action-btn{min-width:160px}
+/* Refresh button overrides */
+#btnRefreshAdapters{background:#148f2d;border-color:#148f2d}
+#btnRefreshAdapters:hover{filter:brightness(0.95)}
+
+/* =============================================================
+   Diagnostics Tab
+   ============================================================= */
+.diag-block{margin-top:14px;display:flex;flex-wrap:wrap;align-items:flex-end;gap:14px;max-width:760px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:6px}
+.diag-block label{font-size:11px;font-weight:600;color:var(--text);display:flex;flex-direction:column}
+.chk-inline{flex-direction:row!important;align-items:center;font-weight:600;margin-right:18px}
+.chk-inline input{margin-right:6px;margin-top:0}
+.diag-output{background:var(--row-alt);border:1px solid var(--border);padding:8px;font-size:12px;max-height:180px;overflow:auto;border-radius:4px;white-space:pre-wrap;color:var(--text)}
+#pingResult{margin-top:6px;font-size:12px;color:var(--text);white-space:pre-wrap}
+
+/* =============================================================
+   Discovery Tab (Form + Results Table)
+   ============================================================= */
+/* Discovery rows */
+.disc-row{margin-bottom:10px}
+.disc-row.stats span{font-size:11px;font-weight:500;color:var(--text);min-width:120px}
+/* Results table with sticky header */
 #discResults{width:100%;border-collapse:collapse;font-size:12px}
-#discResults th,#discResults td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:left;color:var(--text)]
+#discResults th,#discResults td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:left;color:var(--text)}
 #discResults thead th{background:var(--thead);position:sticky;top:0;z-index:1;cursor:pointer;user-select:none}
 #discResults tbody tr:nth-child(even){background:var(--row-alt)}
 #discResults tbody tr:hover{background:var(--row-hover)}
-.disc-row.stats span{font-size:11px;font-weight:500;color:var(--text);min-width:120px}
+/* Discovery footer buttons */
+.disc-row.buttons{margin-top:12px;gap:10px}
+/* Clear results button style */
+.action-btn.clear-results{background:#ffc700;border-color:#d6a700;color:#000}
+.action-btn.clear-results:hover{background:#e4b500;border-color:#b89300}
 
-/* Sort arrows for sortable tables */
+/* =============================================================
+   Settings Tab
+   ============================================================= */
+/* Numeric inputs sizing in settings */
+.settings-panel input[type=number]{width:130px}
+.settings-panel.discovery-panel{padding:12px 14px}
+.settings-panel .disc-row{border-top:none;padding-top:12px}
+.settings-panel .disc-row:first-child{padding-top:0}
+.settings-title{font-size:14px;font-weight:800;letter-spacing:.4px;color:var(--text);border-left:3px solid var(--accent2);padding-left:8px;border-bottom:1px solid var(--border);padding-bottom:6px;display:block}
+.settings-subtitle{font-size:12px;font-weight:700;color:var(--muted)}
+
+/* =============================================================
+   Sorting Indicators (Adapters + Discovery tables)
+   ============================================================= */
 #tblAdapters th, #discResults th{cursor:pointer;position:relative}
 #tblAdapters th.sort-asc::after, #discResults th.sort-asc::after{content:"^";position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text)}
 #tblAdapters th.sort-desc::after, #discResults th.sort-desc::after{content:"v";position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text)}
 
-/* Refresh Adapters button color overrides */
-#btnRefreshAdapters{background:#148f2d;border-color:#148f2d}
-#btnRefreshAdapters:hover{filter:brightness(0.95)}
-
-/* Discovery clear results button */
-.action-btn.clear-results{background:#ffc700;border-color:#d6a700;color:#000}
-.action-btn.clear-results:hover{background:#e4b500;border-color:#b89300}
-
-/* Settings panel inputs sizing */
-.settings-panel input[type=number]{width:130px}
-
-/* Favorites management form */
-.favorites-manage label{color:var(--text);display:flex;flex-direction:column;font-size:11px;font-weight:600}
-.favorites-manage input,.favorites-manage select{padding:6px 8px;font-size:13px;border:1px solid var(--tab-border);border-radius:4px;background:var(--card);color:var(--text)}
-
-/* Dark mode: force tab bar/header to theme header-bg (black) */
-body.dark nav{background:var(--header-bg)!important;color:#fff}
-body.dark nav .tab-btn{color:#fff}
+/* =============================================================
+   Misc: Footer, Modal, Small Buttons, Status
+   ============================================================= */
+/* Footer area */
+footer{background:var(--thead);padding:6px 12px;text-align:center;font-size:12px;border-top:1px solid var(--border)}
+/* Minor control button */
+.mini-btn{background:#555;color:#fff;border:1px solid #555;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer}
+.mini-btn:hover{background:#333}
+/* Status line text */
+.status-line{font-size:12px;color:#555;padding:2px 4px;min-height:16px}
 
 /* In-app modal */
 #appModal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:2000}
@@ -139,3 +156,7 @@ body.dark nav .tab-btn{color:#fff}
 #appModal .modal-dialog.error{border-color:#c0392b}
 #appModal .modal-dialog.success{border-color:#148f2d}
 #appModal .modal-dialog.info{border-color:var(--accent)}
+
+/* Octet inputs */
+.ip-octet{width:46px;padding:6px 8px;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text)}
+.octet-dot{color:var(--muted);font-weight:bold}

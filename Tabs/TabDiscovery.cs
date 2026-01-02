@@ -11,7 +11,7 @@ namespace NetworkUtilityApp.Tabs
     public partial class TabDiscovery : UserControl
     {
         private CancellationTokenSource? _scanCts;
-        private Stopwatch? _scanSw; // NEW
+        private Stopwatch? _scanSw;
 
         public TabDiscovery()
         {
@@ -23,9 +23,7 @@ namespace NetworkUtilityApp.Tabs
             btnCancel.Click += (_, __) => CancelScan();
             btnSave.Click += async (_, __) => await SaveResultsAsync();
 
-            // Update start/end when user picks a different adapter
             cboAdapter.SelectionChangeCommitted += (_, __) => AutofillRange();
-
             LoadAdapters();
         }
 
@@ -38,9 +36,7 @@ namespace NetworkUtilityApp.Tabs
             {
                 var adapters = NetworkController.GetAdapters() ?? [];
                 var ipv4 = adapters
-                    .Where(a => !string.IsNullOrWhiteSpace(a.IpAddress) &&
-                                ValidationHelper.IsValidIPv4(a.IpAddress))
-                    .Select(a => a)
+                    .Where(a => !string.IsNullOrWhiteSpace(a.IpAddress) && ValidationHelper.IsValidIPv4(a.IpAddress))
                     .ToList();
                 cboAdapter.Items.Clear();
                 foreach (var a in ipv4)
@@ -70,7 +66,6 @@ namespace NetworkUtilityApp.Tabs
             if (!ValidationHelper.IsValidIPv4(ip) || !ValidationHelper.IsValidIPv4(subnet)) return;
             var networkBase = GetNetworkBase(ip, subnet);
             if (networkBase is null) return;
-            // Simple /24 assumption fallback
             txtStartIp.Text = networkBase + ".1";
             txtEndIp.Text = networkBase + ".254";
         }
@@ -89,7 +84,7 @@ namespace NetworkUtilityApp.Tabs
                     int maskPart = int.Parse(maskOct[i]);
                     baseParts[i] = (ipPart & maskPart).ToString();
                 }
-                return string.Join(".", baseParts.Take(3)); // assume /24 for range
+                return string.Join(".", baseParts.Take(3));
             }
             catch { return null; }
         }
@@ -118,7 +113,6 @@ namespace NetworkUtilityApp.Tabs
                 return;
             }
 
-            // UI state
             btnScan.Enabled = false;
             btnAutofill.Enabled = false;
             cboAdapter.Enabled = false;
@@ -135,7 +129,6 @@ namespace NetworkUtilityApp.Tabs
                 long totalLong = endVal - startVal + 1;
                 int total = totalLong > int.MaxValue ? int.MaxValue : (int)totalLong;
 
-                // progress init
                 prgScan.Value = 0;
                 prgScan.Maximum = total;
                 lblProgressCounts.Text = $"Scanned: 0 / {total} | Active: 0";
@@ -167,10 +160,8 @@ namespace NetworkUtilityApp.Tabs
                         );
                     }
 
-                    // progress update
                     if (scanned <= prgScan.Maximum) prgScan.Value = scanned;
                     UpdateProgressLabels(scanned, total, activeCount);
-
                     Application.DoEvents();
                 }
 
@@ -193,7 +184,6 @@ namespace NetworkUtilityApp.Tabs
                 _scanCts?.Dispose();
                 _scanCts = null;
 
-                // restore UI
                 btnScan.Enabled = true;
                 btnAutofill.Enabled = true;
                 cboAdapter.Enabled = true;
@@ -211,7 +201,7 @@ namespace NetworkUtilityApp.Tabs
             _scanCts.Cancel();
         }
 
-        private void UpdateProgressLabels(int scanned, int total, int active) // NEW
+        private void UpdateProgressLabels(int scanned, int total, int active)
         {
             lblProgressCounts.Text = $"Scanned: {scanned} / {total} | Active: {active}";
             if (_scanSw is null || scanned == 0 || scanned >= total)
@@ -219,17 +209,14 @@ namespace NetworkUtilityApp.Tabs
                 lblEta.Text = scanned >= total ? "ETA: 00:00:00" : "ETA: --:--:--";
                 return;
             }
-
             var elapsed = _scanSw.Elapsed;
             double perItem = elapsed.TotalSeconds / scanned;
             var remaining = TimeSpan.FromSeconds(Math.Max(0, (total - scanned) * perItem));
             lblEta.Text = $"ETA: {FormatSpan(remaining)}";
         }
 
-        private static string FormatSpan(TimeSpan ts) // NEW
-        {
-            return $"{(int)ts.TotalHours:00}:{ts.Minutes:00}:{ts.Seconds:00}";
-        }
+        private static string FormatSpan(TimeSpan ts)
+            => $"{(int)ts.TotalHours:00}:{ts.Minutes:00}:{ts.Seconds:00}";
 
         private static long IpToInt(string ip)
         {
@@ -238,15 +225,9 @@ namespace NetworkUtilityApp.Tabs
         }
 
         private static string IntToIp(long val)
-            => string.Join(".", new[]
-            {
-                (val >> 24) & 255,
-                (val >> 16) & 255,
-                (val >> 8) & 255,
-                val & 255
-            });
+            => string.Join('.', new[] { (val >> 24) & 255, (val >> 16) & 255, (val >> 8) & 255, val & 255 });
 
-        private static async Task<ProbeResult> ProbeAsync(string ip, Dictionary<string,string> arpCache)
+        private static async Task<ProbeResult> ProbeAsync(string ip, Dictionary<string, string> arpCache)
         {
             var pr = new ProbeResult { Ip = ip, Status = "No Reply" };
             try
@@ -263,24 +244,74 @@ namespace NetworkUtilityApp.Tabs
                         var host = await Dns.GetHostEntryAsync(ip);
                         pr.Hostname = host.HostName;
                     }
-                    catch { pr.Hostname = ""; }
+                    catch
+                    {
+                        pr.Hostname = LlmnrResolver.TryGetHostname(ip);
+                        if (string.IsNullOrWhiteSpace(pr.Hostname)) pr.Hostname = MdnsResolver.TryGetHostname(ip);
+                        if (string.IsNullOrWhiteSpace(pr.Hostname)) pr.Hostname = NbnsResolver.TryGetHostname(ip, 1200, null);
+                        if (string.IsNullOrWhiteSpace(pr.Hostname)) pr.Hostname = TryResolveNetbiosName(ip);
+                    }
+
                     if (arpCache.TryGetValue(ip, out var mac))
-                        pr.Mac = mac;
+                        pr.Mac = NormalizeMac(mac);
                     else
                     {
-                        // Refresh ARP for this IP
                         LoadArpTableInto(arpCache);
-                        if (arpCache.TryGetValue(ip, out mac))
-                            pr.Mac = mac;
+                        if (arpCache.TryGetValue(ip, out mac)) pr.Mac = NormalizeMac(mac);
                     }
                     pr.Manufacturer = ResolveManufacturer(pr.Mac);
                 }
             }
-            catch { /* ignore individual failures */ }
+            catch { }
             return pr;
         }
 
-        private static void LoadArpTableInto(Dictionary<string,string> map)
+        private static string TryResolveNetbiosName(string ip)
+        {
+            try
+            {
+                using var p = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "nbtstat",
+                        Arguments = $"-A {ip}",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
+                p.Start();
+                var output = p.StandardOutput.ReadToEnd();
+                _ = p.StandardError.ReadToEnd();
+                p.WaitForExit(4000);
+                foreach (var line in output.Split('\n'))
+                {
+                    var t = line.Trim();
+                    if (string.IsNullOrWhiteSpace(t)) continue;
+                    if (t.StartsWith("NetBIOS", StringComparison.OrdinalIgnoreCase)) continue;
+                    if (t.StartsWith("Node ", StringComparison.OrdinalIgnoreCase)) continue;
+                    if (t.StartsWith("Names", StringComparison.OrdinalIgnoreCase)) continue;
+                    if (!t.Contains('<')) continue;
+                    if (!t.Contains("<00>")) continue;
+                    var idx = t.IndexOf('<');
+                    if (idx > 0)
+                    {
+                        var name = t[..idx].Trim();
+                        if (string.IsNullOrWhiteSpace(name)) continue;
+                        if (name.Equals("*", StringComparison.Ordinal)) continue;
+                        if (name.Equals("Ethernet", StringComparison.OrdinalIgnoreCase)) continue;
+                        if (name.Equals("__MSBROWSE__", StringComparison.OrdinalIgnoreCase)) continue;
+                        return name;
+                    }
+                }
+            }
+            catch { }
+            return string.Empty;
+        }
+
+        private static void LoadArpTableInto(Dictionary<string, string> map)
         {
             try
             {
@@ -298,49 +329,27 @@ namespace NetworkUtilityApp.Tabs
                 p.Start();
                 var output = p.StandardOutput.ReadToEnd();
                 p.WaitForExit(4000);
-                // Parse lines containing IP and MAC
                 foreach (var line in output.Split('\n'))
                 {
                     var trimmed = line.Trim();
                     if (string.IsNullOrWhiteSpace(trimmed)) continue;
-                    // Expected format:  IP address  MAC address  Type
                     var parts = trimmed.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
-                    if (parts.Length >= 3 && ValidationHelper.IsValidIPv4(parts[0]))
-                        map[parts[0]] = parts[1];
+                    if (parts.Length >= 3 && ValidationHelper.IsValidIPv4(parts[0])) map[parts[0]] = NormalizeMac(parts[1]);
                 }
             }
-            catch { /* ignore */ }
+            catch { }
         }
 
-        // Basic OUI to manufacturer resolver; extend map as needed
-        private static string ResolveManufacturer(string mac)
+        private static string NormalizeMac(string raw)
         {
-            if (string.IsNullOrWhiteSpace(mac)) return "";
-            var hex = new string([.. mac.ToUpperInvariant()
-                                     .Replace("-", "")
-                                     .Replace(":", "")
-                                     .Where(Uri.IsHexDigit)]);
-            if (hex.Length < 6) return "";
-            var oui = hex[..6]; // first 3 bytes
-
-            // Minimal known OUIs; extend safely over time
-            var vendors = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-            {
-                { "000C29", "VMware, Inc." },
-                { "0003FF", "Microsoft" },       // Hyper-V (example)
-                { "001C14", "Intel Corporation" },
-                { "F4F5E8", "Intel Corporation" },
-                { "B827EB", "Raspberry Pi Foundation" },
-                { "F01FAF", "Apple, Inc." },
-                { "A45E60", "Apple, Inc." },
-                { "D83062", "Apple, Inc." },
-                { "00E04C", "Realtek Semiconductor" },
-                { "001E49", "Cisco Systems" }
-            };
-
-            return vendors.TryGetValue(oui, out var vendor) ? vendor : "Unknown";
+            if (string.IsNullOrWhiteSpace(raw)) return string.Empty;
+            var hex = new string([.. raw.Where(c => Uri.IsHexDigit(c))]);
+            if (hex.Length < 12) return raw;
+            hex = hex[..12].ToUpperInvariant();
+            return string.Join(':', Enumerable.Range(0, 6).Select(i => hex.Substring(i * 2, 2)));
         }
 
+        private static string ResolveManufacturer(string mac) => MacVendors.Lookup(mac);
         private static void AppendLog(string message) => AppLog.Info(message);
 
         private async Task SaveResultsAsync()
@@ -362,38 +371,27 @@ namespace NetworkUtilityApp.Tabs
                     DefaultExt = "txt",
                     OverwritePrompt = true
                 };
-
                 if (sfd.ShowDialog(FindForm()) != DialogResult.OK) return;
 
-                var lines = new List<string>();
+                var lines = new List<string>
+                {
+                    $"Network Discovery Results - {DateTime.Now}",
+                    string.IsNullOrWhiteSpace(txtStartIp.Text.Trim()) || string.IsNullOrWhiteSpace(txtEndIp.Text.Trim())
+                        ? string.Empty
+                        : $"Range: {txtStartIp.Text.Trim()} - {txtEndIp.Text.Trim()}",
+                    string.Empty
+                };
 
-                // Header
-                var start = txtStartIp.Text.Trim();
-                var end = txtEndIp.Text.Trim();
-                lines.Add($"Network Discovery Results - {DateTime.Now}");
-                if (!string.IsNullOrWhiteSpace(start) && !string.IsNullOrWhiteSpace(end))
-                    lines.Add($"Range: {start} - {end}");
-                lines.Add("");
+                var headers = dgvResults.Columns.Cast<DataGridViewColumn>().Select(c => c.HeaderText).ToArray();
+                lines.Add(string.Join('\t', headers));
 
-                // Columns
-                var headers = dgvResults.Columns
-                    .Cast<DataGridViewColumn>()
-                    .Select(c => c.HeaderText)
-                    .ToArray();
-                lines.Add(string.Join("\t", headers));
-
-                // Rows
                 foreach (DataGridViewRow row in dgvResults.Rows)
                 {
                     if (row.IsNewRow) continue;
-                    var cells = row.Cells
-                        .Cast<DataGridViewCell>()
-                        .Select(c => (c.Value?.ToString() ?? "")
-                            .Replace("\t", " ")
-                            .Replace("\r", " ")
-                            .Replace("\n", " "))
+                    var cells = row.Cells.Cast<DataGridViewCell>()
+                        .Select(c => (c.Value?.ToString() ?? "").Replace('\t', ' ').Replace('\r', ' ').Replace('\n', ' '))
                         .ToArray();
-                    lines.Add(string.Join("\t", cells));
+                    lines.Add(string.Join('\t', cells));
                 }
 
                 await File.WriteAllLinesAsync(sfd.FileName, lines);
@@ -412,8 +410,8 @@ namespace NetworkUtilityApp.Tabs
             public long? LatencyMs { get; set; }
             public string Hostname { get; set; } = "";
             public string Mac { get; set; } = "";
-            public string Manufacturer { get; set; } = ""; // NEW
-            public string Status { get; set; } = "No Reply"; // NEW
+            public string Manufacturer { get; set; } = "";
+            public string Status { get; set; } = "No Reply";
         }
     }
 }
