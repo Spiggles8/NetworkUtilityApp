@@ -2,13 +2,17 @@
 
 A quick, focused substitute for common Windows networking tools. The goal is to make looking up and adjusting basic network info faster and easier than digging through multiple built-in UIs and consoles.
 
-- Platform: Windows (WinForms), .NET 8
+- Platform: Windows (WinForms host with WebView2 UI wrapper), .NET 8
 - Audience: Help desk, power users, lab setups
 - Scope: IPv4-centric day-to-day diagnostics and adapter tweaks
 
 ## Key features
 
-- Global Output Log
+- Unified Dark Mode
+  - Host (WinForms) and WebView (HTML/JS) theme update together when toggling Dark Mode in Settings.
+
+- Quieter Output Log
+  - Routine settings load/save and startup/shutdown messages are suppressed; errors still logged.
   - Central log panel for all actions, with Clear and Save options.
 
 - Network Adapters
@@ -19,7 +23,7 @@ A quick, focused substitute for common Windows networking tools. The goal is to 
   - Context menu: copy IP/MAC/row, one‑shot ping.
 
 - Diagnostics
-  - Ping (one‑shot) and Ping continuously (toggle, 2s interval).
+  - Ping (one‑shot) and Ping continuously (toggle, 2s interval). Button state/style reflects active loop.
   - Traceroute with optional name resolution.
   - nslookup and pathping with separate targets.
   - Results sent to the global log.
@@ -27,8 +31,11 @@ A quick, focused substitute for common Windows networking tools. The goal is to 
 - Network Discovery
   - Enter start and end IPv4 (or use Autofill from active adapter).
   - Cancellable scan with progress bar, counts (scanned/active), and ETA.
-  - Shows IP, Hostname (reverse DNS), MAC (via ARP), Manufacturer (OUI), Latency, Status.
+  - Shows IP, Hostname (reverse DNS on-network), MAC (via ARP), Manufacturer (OUI), Latency, Status.
   - Save results to .txt (tab‑delimited).
+
+- Code documentation for maintainers
+  - XML docs and inline comments across helpers and tabs (`LlmnrResolver`, `MdnsResolver`, `MacVendors`, `TabDiscovery`, `TabDiagnostics`, `TabNetworkAdapters`, `AlertForm`, `Form1`).
 
 ## Requirements
 
@@ -50,7 +57,7 @@ A quick, focused substitute for common Windows networking tools. The goal is to 
 
 ## Usage notes
 
-- Global log captures all actions. Save logs for later review.
+- Global log captures most actions. Routine settings noise is suppressed; errors are still logged.
 - Discovery uses ICMP and ARP parsing; MAC/manufacturer may be unavailable for devices outside the local segment or suppressed by OS caching.
 - Traceroute parsing is tuned for English `tracert` output and is best‑effort.
 - Continuous ping runs until toggled off or the tab is disposed.
@@ -62,6 +69,8 @@ A quick, focused substitute for common Windows networking tools. The goal is to 
 
 ## Troubleshooting
 
+- Theme only partially updates:
+  - Ensure you’re on the latest build; Settings pushes theme updates to WebView immediately.
 - Adapter list empty:
   - Click Refresh; ensure network interfaces are enabled.
 - No MAC/manufacturer:

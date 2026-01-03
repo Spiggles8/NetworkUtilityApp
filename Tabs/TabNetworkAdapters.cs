@@ -1,11 +1,19 @@
-﻿using NetworkUtilityApp.Controllers; // NetworkController
-using NetworkUtilityApp.Helpers;     // ValidationHelper
+﻿using NetworkUtilityApp.Controllers; 
+using NetworkUtilityApp.Helpers;     
 using NetworkUtilityApp.Services;
 
 namespace NetworkUtilityApp.Tabs
 {
+    /// <summary>
+    /// Legacy/secondary WinForms view for network adapters.
+    ///
+    /// The WebView2-based page is now the primary adapter UI, so this tab
+    /// mainly exposes favorite IP buttons and keeps a minimal grid in sync
+    /// when used.
+    /// </summary>
     public partial class TabNetworkAdapters : UserControl
     {
+        // Controller is still kept for potential future use / parity
         private readonly NetworkController _controller = new();
 
         public TabNetworkAdapters()
@@ -14,18 +22,25 @@ namespace NetworkUtilityApp.Tabs
 
             if (!DesignMode)
             {
+                // Configure grid layout if a DataGridView is present
                 ConfigureGridIfNeeded();
-                // WebView2 is the primary UI; avoid wiring WinForms tab actions
+
+                // Favorites are managed by a shared store; update our buttons
+                // whenever anything changes (from Settings, WebView, etc.).
                 FavoriteIpStore.FavoritesChanged += (_, __) => RefreshFavoriteButtons();
                 RefreshFavoriteButtons();
             }
         }
-         
+
+        // Kept for API symmetry with other tabs; currently no extra init needed
         public static void Initialize()
         {
-
         }
 
+        /// <summary>
+        /// Refresh adapter info for this tab. The actual adapter list is
+        /// owned by the WebView page, so here we only reset any label state.
+        /// </summary>
         public void RefreshAdapters()
         {
             try
@@ -42,10 +57,15 @@ namespace NetworkUtilityApp.Tabs
             }
         }
 
+        // Placeholder handler kept for designer wiring compatibility
         private void Dgv_CellClick(object? sender, DataGridViewCellEventArgs e)
         {
         }
 
+        /// <summary>
+        /// Update the text/enabled state of the four favorite IP buttons
+        /// based on the current contents of <see cref="FavoriteIpStore"/>.
+        /// </summary>
         private void RefreshFavoriteButtons()
         {
             var pairs = new (string btnName, int slot)[]
@@ -68,6 +88,10 @@ namespace NetworkUtilityApp.Tabs
             }
         }
 
+        /// <summary>
+        /// Try to locate the DataGridView used to show adapters. Works with
+        /// both named lookup and a generic depth-first search through controls.
+        /// </summary>
         private DataGridView? GetGrid()
         {
             var byName = Controls.Find("dgvAdapters", true).FirstOrDefault() as DataGridView;
@@ -83,9 +107,11 @@ namespace NetworkUtilityApp.Tabs
                 foreach (Control child in c.Controls)
                     stack.Push(child);
             }
+
             return null;
         }
 
+        // Apply common grid settings and ensure expected adapter columns exist.
         private void ConfigureGridIfNeeded()
         {
             if (GetGrid() is not DataGridView dgv) return;
@@ -111,6 +137,7 @@ namespace NetworkUtilityApp.Tabs
             }
         }
 
+        // Convenience factory for text columns used by the adapters grid.
         private static DataGridViewTextBoxColumn MakeTextCol(string name, string header, int width = 140)
             => new()
             {
@@ -127,6 +154,10 @@ namespace NetworkUtilityApp.Tabs
             AppLog.Info(message);
         }
 
+        /// <summary>
+        /// Fill IP/subnet/gateway input fields from a single favorite IP
+        /// value. Supports both single-field and octet-split layouts.
+        /// </summary>
         private void FillIpSubnetGatewayFrom(string ipText)
         {
             if (string.IsNullOrWhiteSpace(ipText)) return;
@@ -150,6 +181,7 @@ namespace NetworkUtilityApp.Tabs
             var gateway = $"{octets[0]}.{octets[1]}.{octets[2]}.1";
             var gwOctets = gateway.Split('.');
 
+            // Depending on layout, either a single IP textbox or 4 octet boxes
             if (Controls.Find("txtIP", true).FirstOrDefault() is TextBox singleIp)
             {
                 singleIp.Text = ip;
@@ -162,6 +194,7 @@ namespace NetworkUtilityApp.Tabs
                         t.Text = octets[i];
             }
 
+            // Subnet single vs octet layout
             if (Controls.Find("txtSubnet", true).FirstOrDefault() is TextBox singleSubnet)
             {
                 singleSubnet.Text = subnet;
@@ -174,6 +207,7 @@ namespace NetworkUtilityApp.Tabs
                         t.Text = subnetOctets[i];
             }
 
+            // Gateway single vs octet layout
             if (Controls.Find("txtGateway", true).FirstOrDefault() is TextBox singleGw)
             {
                 singleGw.Text = gateway;

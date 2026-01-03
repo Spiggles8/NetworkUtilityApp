@@ -275,6 +275,17 @@
           <label class="chk-inline"><input type="checkbox" id="setEnableNbns" checked /> Enable NBNS</label>
           <label class="chk-inline"><input type="checkbox" id="setEnableNbtstat" checked /> Enable NetBIOS (nbtstat)</label>
         </div>
+
+        <!-- Diagnostics section -->
+        <div class="disc-row" style="margin-top:12px"><h4 class="settings-title">Diagnostics</h4></div>
+        <div class="disc-row">
+          <label>Ping Retry Count
+            <input id="setPingRetries" type="number" min="0" max="10" placeholder="0" />
+          </label>
+          <label>Ping Interval (seconds)
+            <input id="setPingInterval" type="number" min="1" max="60" placeholder="2" />
+          </label>
+        </div>
       </div>
     </section>
   </main>

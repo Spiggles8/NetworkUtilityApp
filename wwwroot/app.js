@@ -353,16 +353,22 @@
   if(chkTraceResolve)    chkTraceResolve   .addEventListener('change',()=>{ try{ localStorage.setItem('diag_trace_resolve',   chkTraceResolve.checked? 'true':'false'); }catch{} });
 
   // Ping/Trace/NS/PathPing actions
-  let continuousPingTimer=null; const pingIntervalMs=2000;
-  if(btnPing)     btnPing    .addEventListener('click',()=>{ const t=pingTarget.value.trim(); if(!t) return; if(chkPingContinuous && chkPingContinuous.checked){ if(continuousPingTimer){ stopContinuousPing('[PING] Continuous stopped by user'); return; } startContinuousPing(t); return; } doPing(t); });
+  let continuousPingTimer=null; let pingIntervalMs=2000; // default
+  let pingRetries=0; // default retries per click
+  if(btnPing)     btnPing    .addEventListener('click',()=>{ const t=pingTarget.value.trim(); if(!t) return; if(chkPingContinuous && chkPingContinuous.checked){ if(continuousPingTimer){ stopContinuousPing('[PING] Continuous stopped by user'); return; } startContinuousPing(t); return; } doPingWithRetries(t); });
   if(btnTrace)    btnTrace   .addEventListener('click',()=>{ const t=traceTarget.value.trim(); if(!t) return; post('log:info:[TRACE] Start '+t); post('trace:'+t+'|'+(chkTraceResolve && chkTraceResolve.checked?'resolve':'nresolve')); });
   if(btnNslookup) btnNslookup.addEventListener('click',()=>{ const t=nsTarget.value.trim(); if(!t) return; post('log:info:[NSLOOKUP] Start '+t); post('nslookup:'+t); });
   if(btnPathPing) btnPathPing.addEventListener('click',()=>{ const t=pathPingTarget.value.trim(); if(!t) return; post('log:info:[PATHPING] Start '+t); post('pathping:'+t); });
   if(btnDiagCancel) btnDiagCancel.addEventListener('click',()=>{ if(continuousPingTimer){ stopContinuousPing('[CANCEL] Continuous ping cancelled'); return; } post('diagnostics:cancel'); });
 
-  function startContinuousPing(t){ btnPing.textContent='Stop'; post('log:info:[PING] Continuous start: '+t); doPing(t); continuousPingTimer=setInterval(()=>doPing(t),pingIntervalMs); }
+  function startContinuousPing(t){ btnPing.textContent='Stop'; post('log:info:[PING] Continuous start: '+t); doPingWithRetries(t); continuousPingTimer=setInterval(()=>doPingWithRetries(t),pingIntervalMs); }
   function stopContinuousPing(reason){ clearInterval(continuousPingTimer); continuousPingTimer=null; btnPing.textContent='Ping'; post('log:info:'+reason); }
   function doPing(t){ post('ping:'+t); }
+  function doPingWithRetries(t){
+    const tries = Math.max(0, pingRetries);
+    doPing(t);
+    for(let i=0;i<tries;i++) setTimeout(()=>doPing(t), (i+1)*250); // spaced quick retries
+  }
 
   // =============================================
   // Settings (Dark Mode, Discovery tuneables, Resolvers, Favorites)
@@ -377,6 +383,9 @@
   const setEnableMdns=document.getElementById('setEnableMdns');
   const setEnableNbns=document.getElementById('setEnableNbns');
   const setEnableNbtstat=document.getElementById('setEnableNbtstat');
+  // Diagnostics settings elements
+  const setPingRetriesEl=document.getElementById('setPingRetries');
+  const setPingIntervalEl=document.getElementById('setPingInterval');
 
   function applyDarkMode(on){ document.body.classList[on? 'add':'remove']('dark'); }
   function saveSettings(){ if(isApplyingSettings) return; // suppress during load
@@ -388,7 +397,13 @@
     const nbt   = setEnableNbtstat&& setEnableNbtstat.checked ? 'nbt:on'  : 'nbt:off';
     const defSubnet = (window.getDefaultSubnetFromOctets? window.getDefaultSubnetFromOctets(): (document.getElementById('setDefaultSubnet')?.value||'')).trim();
     const dark = setDarkMode && setDarkMode.checked ? 'dark' : '';
-    post('settings:save:'+'|'+'|'+(isNaN(parallel)?'':parallel)+'|'+(isNaN(timeout)?'':timeout)+'|'+dark+'|'+defSubnet+'|'+llmnr+'|'+mdns+'|'+nbns+'|'+nbt);
+    const pingRetriesVal = parseInt(setPingRetriesEl && setPingRetriesEl.value || '');
+    const pingIntervalSecVal = parseInt(setPingIntervalEl && setPingIntervalEl.value || '');
+    // Apply locally
+    if(!isNaN(pingRetriesVal)) { pingRetries = Math.max(0, Math.min(10, pingRetriesVal)); try{ localStorage.setItem('diag_ping_retries', String(pingRetries)); }catch{} }
+    if(!isNaN(pingIntervalSecVal)) { const ms=Math.max(1, Math.min(60, pingIntervalSecVal))*1000; pingIntervalMs=ms; try{ localStorage.setItem('diag_ping_interval_ms', String(pingIntervalMs)); }catch{} }
+    // Post to host (extend payload end for future support)
+    post('settings:save:'+'|'+'|'+(isNaN(parallel)?'':parallel)+'|'+(isNaN(timeout)?'':timeout)+'|'+dark+'|'+defSubnet+'|'+llmnr+'|'+mdns+'|'+nbns+'|'+nbt+'|'+(isNaN(pingRetriesVal)?'':pingRetriesVal)+'|'+(isNaN(pingIntervalSecVal)?'':pingIntervalSecVal));
   }
 
   // Auto-save when any setting changes (guarded)
@@ -399,6 +414,8 @@
   if(setEnableMdns)         setEnableMdns        .addEventListener('change',()=>{ saveSettings(); });
   if(setEnableNbns)         setEnableNbns        .addEventListener('change',()=>{ saveSettings(); });
   if(setEnableNbtstat)      setEnableNbtstat     .addEventListener('change',()=>{ saveSettings(); });
+  if(setPingRetriesEl)      setPingRetriesEl     .addEventListener('input', ()=>{ saveSettings(); });
+  if(setPingIntervalEl)     setPingIntervalEl    .addEventListener('input', ()=>{ saveSettings(); });
 
   // Host -> UI: apply settings snapshot without triggering auto-save
   if(window.chrome && window.chrome.webview) window.chrome.webview.addEventListener('message',e=>{
@@ -414,13 +431,14 @@
         if(setEnableMdns   && typeof s.EnableMdns   ==='boolean') setEnableMdns  .checked=s.EnableMdns;
         if(setEnableNbns   && typeof s.EnableNbns   ==='boolean') setEnableNbns  .checked=s.EnableNbns;
         if(setEnableNbtstat&& typeof s.EnableNbtstat==='boolean') setEnableNbtstat.checked=s.EnableNbtstat;
-        // Default subnet octets
-        if(typeof s.DefaultSubnet==='string'){
-          const parts=s.DefaultSubnet.split('.');
-          const ds1=document.getElementById('defSub1'), ds2=document.getElementById('defSub2'), ds3=document.getElementById('defSub3'), ds4=document.getElementById('defSub4');
-          if(ds1) ds1.value=parts[0]||''; if(ds2) ds2.value=parts[1]||''; if(ds3) ds3.value=parts[2]||''; if(ds4) ds4.value=parts[3]||'';
-        }
-        if(settingsStatus) settingsStatus.textContent='Settings loaded.';
+        // Diagnostics settings defaults/apply
+        const storedRetries = (function(){ try{ return localStorage.getItem('diag_ping_retries'); }catch{ return null; } })();
+        const storedInterval = (function(){ try{ return localStorage.getItem('diag_ping_interval_ms'); }catch{ return null; } })();
+        if(setPingRetriesEl) setPingRetriesEl.value = storedRetries ?? (s.PingRetries ?? '0');
+        if(setPingIntervalEl) setPingIntervalEl.value = storedInterval ? Math.max(1, Math.round(parseInt(storedInterval,10)/1000)).toString() : (s.PingIntervalSeconds ?? '2');
+        // apply to runtime
+        pingRetries = parseInt(setPingRetriesEl.value||'0',10) || 0;
+        pingIntervalMs = (parseInt(setPingIntervalEl.value||'2',10) || 2) * 1000;
       }catch{}
       finally{ isApplyingSettings=false; }
     }
