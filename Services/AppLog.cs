@@ -10,9 +10,7 @@ namespace NetworkUtilityApp.Services
     /// </summary>
     public static class AppLog
     {
-        /// <summary>
-        /// Immutable log entry. Timestamp (local), level, and message text.
-        /// </summary>
+        // Immutable log entry. Timestamp (local), level, and message text.
         public sealed class LogEntry
         {
             public DateTime Timestamp { get; init; }          // When the entry was created

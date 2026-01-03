@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Net;
+﻿using System.Diagnostics;
 using System.Net.NetworkInformation;
 using System.Security.Principal;
 using System.Text.RegularExpressions;
@@ -36,10 +32,8 @@ namespace NetworkUtilityApp.Controllers
         // Helper utilities
         // -----------------------
 
-        /// <summary>
-        /// Returns true when the current process is running with Administrator privileges.
-        /// Important: calling netsh to change adapter configuration requires elevation.
-        /// </summary>
+        // Returns true when the current process is running with Administrator privileges.
+        // Important: calling netsh to change adapter configuration requires elevation.
         private static bool IsAdministrator()
         {
             // Get the Windows identity for the current thread/process.
@@ -54,12 +48,10 @@ namespace NetworkUtilityApp.Controllers
         // Adapter enumeration
         // -----------------------
 
-        /// <summary>
-        /// Enumerates local network interfaces and constructs a lightweight summary
-        /// containing the adapter's name, DHCP state, IPv4 address, subnet mask, gateway,
-        /// operational status, description, and MAC address.
-        ///
-        /// </summary>
+        // Enumerates local network interfaces and constructs a lightweight summary
+        // containing the adapter's name, DHCP state, IPv4 address, subnet mask, gateway,
+        // operational status, description, and MAC address.
+        
         public static List<NetworkAdapterInfo> GetAdapters()
         {
             // Prepare the list we will return to the caller (UI).
@@ -114,9 +106,9 @@ namespace NetworkUtilityApp.Controllers
         private static string NormalizeMac(string raw)
         {
             if (string.IsNullOrWhiteSpace(raw)) return string.Empty;
-            var hex = new string(raw.Where(c => Uri.IsHexDigit(c)).ToArray());
+            var hex = new string([.. raw.Where(c => Uri.IsHexDigit(c))]);
             if (hex.Length < 12) return raw; // fallback to original if unexpected
-            hex = hex.Substring(0, 12).ToUpperInvariant();
+            hex = hex[..12].ToUpperInvariant();
             return string.Join(":", Enumerable.Range(0, 6).Select(i => hex.Substring(i * 2, 2)));
         }
 
@@ -124,10 +116,8 @@ namespace NetworkUtilityApp.Controllers
         // Adapter configuration (netsh)
         // -----------------------
 
-        /// <summary>
-        /// Enables DHCP on the named adapter by invoking the Windows 'netsh' tool.
-        /// Returns a textual status message (success or error).
-        /// </summary>
+        //Enables DHCP on the named adapter by invoking the Windows 'netsh' tool.
+        //Returns a textual status message (success or error).
         public static string SetDhcp(string adapterName)
         {
             // Guard: changing adapter settings requires admin rights. Return informative message if not elevated.
@@ -167,11 +157,9 @@ namespace NetworkUtilityApp.Controllers
             }
         }
 
-        /// <summary>
-        /// Sets a static IPv4 address on the named adapter using Windows 'netsh'.
-        /// Arguments: adapterName, ip, subnetMask, gateway.
-        /// Returns a textual status message (success or error).
-        /// </summary>
+        // Sets a static IPv4 address on the named adapter using Windows 'netsh'.
+        //Arguments: adapterName, ip, subnetMask, gateway.
+        // Returns a textual status message (success or error).
         public static string SetStatic(string adapterName, string ip, string subnet, string gateway)
         {
             // Guard for elevation just like SetDhcp.
@@ -223,10 +211,8 @@ namespace NetworkUtilityApp.Controllers
         // Network diagnostics
         // -----------------------
 
-        /// <summary>
-        /// Sends a single ICMP echo (ping) and returns a short textual summary.
-        /// Timeout is 2000ms. Exceptions are caught and returned as error strings.
-        /// </summary>
+        // Sends a single ICMP echo (ping) and returns a short textual summary.
+        // Timeout is 2000ms. Exceptions are caught and returned as error strings.
         public static string PingHost(string ipAddress)
         {
             try
@@ -254,10 +240,8 @@ namespace NetworkUtilityApp.Controllers
 
         // -------- Traceroute models --------
 
-        /// <summary>
-        /// Represents a single hop returned by traceroute.
-        /// RTT values are nullable because tracert reports '*' on timeout.
-        /// </summary>
+        // Represents a single hop returned by traceroute.
+        // RTT values are nullable because tracert reports '*' on timeout.
         public sealed class TraceHop
         {
             public int Hop { get; init; }
@@ -268,25 +252,19 @@ namespace NetworkUtilityApp.Controllers
             public bool TimedOut { get; init; }
         }
 
-        /// <summary>
-        /// Container for parsed traceroute output including raw output for debugging.
-        /// </summary>
+        // Container for parsed traceroute output including raw output for debugging.
         public sealed class TraceResult
         {
             // Hops is initially empty; callers can inspect RawOutput for full command text.
-            public List<TraceHop> Hops { get; } = new List<TraceHop>();
+            public List<TraceHop> Hops { get; } = [];
             public string RawOutput { get; init; } = string.Empty;
             public string Target { get; init; } = string.Empty;
         }
 
-        /// <summary>
-        /// Runs Windows 'tracert' and parses the textual output into TraceHop entries.
-        /// This parsing uses a regular expression tuned for the typical English tracert output.
-        /// Localized OS output can break the regex — treat parsing results as best-effort.
-        /// </summary>
-        /// <remarks>
-        /// Caller should run this off the UI thread to avoid blocking the UI while tracert runs.
-        /// </remarks>
+        // Runs Windows 'tracert' and parses the textual output into TraceHop entries.
+        // This parsing uses a regular expression tuned for the typical English tracert output.
+        // Localized OS output can break the regex — treat parsing results as best-effort.
+
         public static TraceResult Traceroute(
             string target,
             int maxHops = 30,
@@ -332,7 +310,7 @@ namespace NetworkUtilityApp.Controllers
             var hopRegex = MyRegex();
 
             // Split output into non-empty lines and process each.
-            foreach (var line in output.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries))
+            foreach (var line in output.Split([Environment.NewLine], StringSplitOptions.RemoveEmptyEntries))
             {
                 // Attempt to match the expected tracert hop line format.
                 var m = hopRegex.Match(line);

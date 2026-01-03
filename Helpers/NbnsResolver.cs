@@ -23,17 +23,24 @@ namespace NetworkUtilityApp.Helpers
                 // Build NBNS packet: Transaction ID, Flags, QDCount=1, ANCOUNT=0, NSCOUNT=0, ARCOUNT=0
                 // Question: NAME='*' (NetBIOS encoded), TYPE=0x0021 (NBSTAT), CLASS=0x0001
                 var txId = (ushort)Random.Shared.Next(0, 0xFFFF);
-                var packet = new List<byte>(64);
-                packet.Add((byte)(txId >> 8));
-                packet.Add((byte)(txId & 0xFF));
-                // Flags: 0x0000 for request
-                packet.Add(0x00); packet.Add(0x00);
-                // QDCOUNT=1
-                packet.Add(0x00); packet.Add(0x01);
-                // ANCOUNT, NSCOUNT, ARCOUNT = 0
-                packet.Add(0x00); packet.Add(0x00);
-                packet.Add(0x00); packet.Add(0x00);
-                packet.Add(0x00); packet.Add(0x00);
+                var packet = new List<byte>(64)
+                {
+                    (byte)(txId >> 8),
+                    (byte)(txId & 0xFF),
+                    // Flags: 0x0000 for request
+                    0x00,
+                    0x00,
+                    // QDCOUNT=1
+                    0x00,
+                    0x01,
+                    // ANCOUNT, NSCOUNT, ARCOUNT = 0
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00,
+                    0x00
+                };
 
                 // Encode NetBIOS name '*'
                 // NetBIOS name is 16 bytes. '*' followed by 15 spaces. Then encoded using RFC 1002 (two ASCII per nibble).
@@ -50,7 +57,7 @@ namespace NetworkUtilityApp.Helpers
                 packet.Add(0x00); packet.Add(0x21);
                 packet.Add(0x00); packet.Add(0x01);
 
-                udp.Send(packet.ToArray(), packet.Count);
+                udp.Send([.. packet], packet.Count);
                 var remote = new IPEndPoint(IPAddress.Any, 0);
                 var resp = udp.Receive(ref remote);
                 if (resp == null || resp.Length < 12) return string.Empty;

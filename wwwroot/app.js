@@ -242,14 +242,6 @@
     }catch{}
   }
 
-  // Host -> UI messages
-  if(window.chrome && window.chrome.webview) window.chrome.webview.addEventListener('message',e=>{
-    const msg=e.data; if(typeof msg!=='string') return;
-    if(msg.startsWith('adapters:data:')) handleAdapters(msg.substring('adapters:data:'.length));
-    else if(msg.startsWith('favorites:data:')) handleFavorites(msg.substring('favorites:data:'.length));
-    else if(msg==='adapters:clearInputs') clearAdapterInputs();
-  });
-
   // =============================================
   // Discovery
   // =============================================
@@ -304,31 +296,6 @@
   if(discSave)   discSave.addEventListener('click',()=>{ post('disc:save'); });
   if(discClear)  discClear.addEventListener('click',()=>{ discWasCancelled=false; post('disc:reset'); });
 
-  // Discovery host -> UI messages
-  function updateDiscStats(scanned,total,active,eta){ if(discProgress)discProgress.textContent='Progress: '+scanned+' / '+total; if(discActive)discActive.textContent='Active: '+active; if(discEta)discEta.textContent='ETA: '+eta; }
-  if(window.chrome && window.chrome.webview) window.chrome.webview.addEventListener('message',e=>{
-    const msg=e.data; if(typeof msg!=='string')return;
-    if(msg.startsWith('disc:adapters:')){ /* discovery adapter list now comes from adapters:data */ }
-    else if(msg==='disc:cancelled'){ discWasCancelled=true; }
-    else if(msg.startsWith('disc:result:')){
-      if(discWasCancelled) return;
-      const json=msg.substring('disc:result:'.length);
-      try{
-        const r=JSON.parse(json);
-        const tr=document.createElement('tr'); tr.classList.add('active-row');
-        const macNorm = normalizeMac(r.Mac||'');
-        tr.innerHTML='<td>'+esc(r.Ip)+'</td><td>'+esc(r.Hostname||'')+'</td><td>'+esc(macNorm)+'</td><td>'+esc(r.Manufacturer||'')+'</td><td>'+esc(r.Status||'')+'</td>';
-        discResultsTbody.appendChild(tr);
-      }catch{}
-    }
-    else if(msg.startsWith('disc:stats:')){
-      const parts=msg.substring('disc:stats:'.length).split('|'); if(parts.length>=4) updateDiscStats(parts[0],parts[1],parts[2],parts[3]);
-    }
-    else if(msg==='disc:clear'){
-      discWasCancelled=false; discResultsTbody.innerHTML=''; updateDiscStats(0,0,0,'--:--:--');
-    }
-  });
-
   // =============================================
   // Diagnostics
   // =============================================
@@ -353,105 +320,95 @@
   if(chkTraceResolve)    chkTraceResolve   .addEventListener('change',()=>{ try{ localStorage.setItem('diag_trace_resolve',   chkTraceResolve.checked? 'true':'false'); }catch{} });
 
   // Ping/Trace/NS/PathPing actions
-  let continuousPingTimer=null; let pingIntervalMs=2000; // default
-  let pingRetries=0; // default retries per click
+  let continuousPingTimer=null; let pingIntervalMs=5000; // default 5s
+  let pingRetries=4; // default retries per click (non-continuous only)
   if(btnPing)     btnPing    .addEventListener('click',()=>{ const t=pingTarget.value.trim(); if(!t) return; if(chkPingContinuous && chkPingContinuous.checked){ if(continuousPingTimer){ stopContinuousPing('[PING] Continuous stopped by user'); return; } startContinuousPing(t); return; } doPingWithRetries(t); });
   if(btnTrace)    btnTrace   .addEventListener('click',()=>{ const t=traceTarget.value.trim(); if(!t) return; post('log:info:[TRACE] Start '+t); post('trace:'+t+'|'+(chkTraceResolve && chkTraceResolve.checked?'resolve':'nresolve')); });
   if(btnNslookup) btnNslookup.addEventListener('click',()=>{ const t=nsTarget.value.trim(); if(!t) return; post('log:info:[NSLOOKUP] Start '+t); post('nslookup:'+t); });
-  if(btnPathPing) btnPathPing.addEventListener('click',()=>{ const t=pathPingTarget.value.trim(); if(!t) return; post('log:info:[PATHPING] Start '+t); post('pathping:'+t); });
+  if(btnPathPing) btnPathPing.addEventListener('click',()=>{ const t=pathPingTarget.value.trim(); if(!t) return; post('log:info:[PATHGING] Start '+t); post('pathping:'+t); });
   if(btnDiagCancel) btnDiagCancel.addEventListener('click',()=>{ if(continuousPingTimer){ stopContinuousPing('[CANCEL] Continuous ping cancelled'); return; } post('diagnostics:cancel'); });
 
-  function startContinuousPing(t){ btnPing.textContent='Stop'; post('log:info:[PING] Continuous start: '+t); doPingWithRetries(t); continuousPingTimer=setInterval(()=>doPingWithRetries(t),pingIntervalMs); }
+  function startContinuousPing(t){
+    btnPing.textContent='Stop';
+    post('log:info:[PING] Continuous start: '+t+' every '+Math.max(1, Math.round(pingIntervalMs/1000))+'s');
+    // For continuous mode: single ping per interval, no retries
+    doPing(t);
+    continuousPingTimer=setInterval(()=>doPing(t),pingIntervalMs);
+  }
   function stopContinuousPing(reason){ clearInterval(continuousPingTimer); continuousPingTimer=null; btnPing.textContent='Ping'; post('log:info:'+reason); }
   function doPing(t){ post('ping:'+t); }
   function doPingWithRetries(t){
-    const tries = Math.max(0, pingRetries);
+    // Treat pingRetries as total attempts (including the first)
+    let totalAttempts = parseInt(pingRetries,10);
+    if(isNaN(totalAttempts) || totalAttempts < 1) totalAttempts = 1;
+    // First attempt immediately
     doPing(t);
-    for(let i=0;i<tries;i++) setTimeout(()=>doPing(t), (i+1)*250); // spaced quick retries
+    // Remaining attempts spaced 250ms
+    for(let i=1; i<totalAttempts; i++){
+      setTimeout(()=>doPing(t), i*250);
+    }
   }
 
   // =============================================
   // Settings (Dark Mode, Discovery tuneables, Resolvers, Favorites)
   // =============================================
-  let isApplyingSettings=false;
+  let isApplyingSettings=false; let lastSavedSnapshot=null;
   const setDiscoveryParallel=document.getElementById('setDiscoveryParallel');
   const setDiscoveryTimeout=document.getElementById('setDiscoveryTimeout');
   const settingsStatus=document.getElementById('settingsStatus');
   const setDarkMode=document.getElementById('setDarkMode');
-  const setPingDefault=document.getElementById('setPingDefault');
   const setEnableLlmnr=document.getElementById('setEnableLlmnr');
   const setEnableMdns=document.getElementById('setEnableMdns');
   const setEnableNbns=document.getElementById('setEnableNbns');
   const setEnableNbtstat=document.getElementById('setEnableNbtstat');
-  // Diagnostics settings elements
   const setPingRetriesEl=document.getElementById('setPingRetries');
   const setPingIntervalEl=document.getElementById('setPingInterval');
 
   function applyDarkMode(on){ document.body.classList[on? 'add':'remove']('dark'); }
-  function saveSettings(){ if(isApplyingSettings) return; // suppress during load
-    const parallel=parseInt(setDiscoveryParallel && setDiscoveryParallel.value || '');
-    const timeout =parseInt(setDiscoveryTimeout  && setDiscoveryTimeout .value || '');
-    const llmnr = setEnableLlmnr  && setEnableLlmnr .checked ? 'llmnr:on' : 'llmnr:off';
-    const mdns  = setEnableMdns   && setEnableMdns  .checked ? 'mdns:on'  : 'mdns:off';
-    const nbns  = setEnableNbns   && setEnableNbns  .checked ? 'nbns:on'  : 'nbns:off';
-    const nbt   = setEnableNbtstat&& setEnableNbtstat.checked ? 'nbt:on'  : 'nbt:off';
-    const defSubnet = (window.getDefaultSubnetFromOctets? window.getDefaultSubnetFromOctets(): (document.getElementById('setDefaultSubnet')?.value||'')).trim();
-    const dark = setDarkMode && setDarkMode.checked ? 'dark' : '';
-    const pingRetriesVal = parseInt(setPingRetriesEl && setPingRetriesEl.value || '');
-    const pingIntervalSecVal = parseInt(setPingIntervalEl && setPingIntervalEl.value || '');
-    // Apply locally
+  function getSettingsSnapshot(){ return {
+    DiscoveryParallel: parseInt(setDiscoveryParallel && setDiscoveryParallel.value || ''),
+    DiscoveryTimeout: parseInt(setDiscoveryTimeout && setDiscoveryTimeout.value || ''),
+    DarkMode: !!(setDarkMode && setDarkMode.checked),
+    EnableLlmnr: !!(setEnableLlmnr && setEnableLlmnr.checked),
+    EnableMdns: !!(setEnableMdns && setEnableMdns.checked),
+    EnableNbns: !!(setEnableNbns && setEnableNbns.checked),
+    EnableNbtstat: !!(setEnableNbtstat && setEnableNbtstat.checked),
+    DefaultSubnet: (window.getDefaultSubnetFromOctets? window.getDefaultSubnetFromOctets(): ''),
+    PingRetries: parseInt(setPingRetriesEl && setPingRetriesEl.value || ''),
+    PingIntervalSeconds: parseInt(setPingIntervalEl && setPingIntervalEl.value || '')
+  }; }
+  function snapshotsEqual(a,b){ try{ return JSON.stringify(a)===JSON.stringify(b); }catch{ return false; } }
+
+  function saveSettings(){ if(isApplyingSettings) return; const parallel=parseInt(setDiscoveryParallel && setDiscoveryParallel.value || ''); const timeout =parseInt(setDiscoveryTimeout  && setDiscoveryTimeout .value || ''); const llmnr = setEnableLlmnr  && setEnableLlmnr .checked ? 'llmnr:on' : 'llmnr:off'; const mdns  = setEnableMdns   && setEnableMdns  .checked ? 'mdns:on'  : 'mdns:off'; const nbns  = setEnableNbns   && setEnableNbns  .checked ? 'nbns:on'  : 'nbns:off'; const nbt   = setEnableNbtstat&& setEnableNbtstat.checked ? 'nbt:on'  : 'nbt:off'; const defSubnet = (window.getDefaultSubnetFromOctets? window.getDefaultSubnetFromOctets(): '').trim(); const dark = setDarkMode && setDarkMode.checked ? 'dark' : ''; const pingRetriesVal = parseInt(setPingRetriesEl && setPingRetriesEl.value || ''); const pingIntervalSecVal = parseInt(setPingIntervalEl && setPingIntervalEl.value || '');
     if(!isNaN(pingRetriesVal)) { pingRetries = Math.max(0, Math.min(10, pingRetriesVal)); try{ localStorage.setItem('diag_ping_retries', String(pingRetries)); }catch{} }
     if(!isNaN(pingIntervalSecVal)) { const ms=Math.max(1, Math.min(60, pingIntervalSecVal))*1000; pingIntervalMs=ms; try{ localStorage.setItem('diag_ping_interval_ms', String(pingIntervalMs)); }catch{} }
-    // Post to host (extend payload end for future support)
+    const snap=getSettingsSnapshot(); if(lastSavedSnapshot && snapshotsEqual(lastSavedSnapshot,snap)) return; lastSavedSnapshot=snap;
     post('settings:save:'+'|'+'|'+(isNaN(parallel)?'':parallel)+'|'+(isNaN(timeout)?'':timeout)+'|'+dark+'|'+defSubnet+'|'+llmnr+'|'+mdns+'|'+nbns+'|'+nbt+'|'+(isNaN(pingRetriesVal)?'':pingRetriesVal)+'|'+(isNaN(pingIntervalSecVal)?'':pingIntervalSecVal));
   }
 
-  // Auto-save when any setting changes (guarded)
-  if(setDarkMode)           setDarkMode          .addEventListener('change',()=>{ applyDarkMode(setDarkMode.checked); saveSettings(); });
-  if(setDiscoveryParallel)  setDiscoveryParallel .addEventListener('input', ()=>{ saveSettings(); });
-  if(setDiscoveryTimeout)   setDiscoveryTimeout  .addEventListener('input', ()=>{ saveSettings(); });
-  if(setEnableLlmnr)        setEnableLlmnr       .addEventListener('change',()=>{ saveSettings(); });
-  if(setEnableMdns)         setEnableMdns        .addEventListener('change',()=>{ saveSettings(); });
-  if(setEnableNbns)         setEnableNbns        .addEventListener('change',()=>{ saveSettings(); });
-  if(setEnableNbtstat)      setEnableNbtstat     .addEventListener('change',()=>{ saveSettings(); });
-  if(setPingRetriesEl)      setPingRetriesEl     .addEventListener('input', ()=>{ saveSettings(); });
-  if(setPingIntervalEl)     setPingIntervalEl    .addEventListener('input', ()=>{ saveSettings(); });
+  function bindGuarded(el,event){ if(!el) return; el.addEventListener(event,()=>{ if(isApplyingSettings) return; saveSettings(); }); }
+  bindGuarded(setDarkMode,'change');
+  bindGuarded(setDiscoveryParallel,'input');
+  bindGuarded(setDiscoveryTimeout,'input');
+  bindGuarded(setEnableLlmnr,'change');
+  bindGuarded(setEnableMdns,'change');
+  bindGuarded(setEnableNbns,'change');
+  bindGuarded(setEnableNbtstat,'change');
+  bindGuarded(setPingRetriesEl,'input');
+  bindGuarded(setPingIntervalEl,'input');
 
-  // Host -> UI: apply settings snapshot without triggering auto-save
-  if(window.chrome && window.chrome.webview) window.chrome.webview.addEventListener('message',e=>{
-    const msg=e.data; if(typeof msg!=='string') return;
-    if(msg.startsWith('settings:data:')){
-      try{
-        isApplyingSettings=true;
-        const s=JSON.parse(msg.substring('settings:data:'.length));
-        if(setDiscoveryParallel) setDiscoveryParallel.value = s.DiscoveryParallel ?? '';
-        if(setDiscoveryTimeout)  setDiscoveryTimeout .value = s.DiscoveryTimeout  ?? '';
-        if(setDarkMode){ setDarkMode.checked = !!s.DarkMode; applyDarkMode(setDarkMode.checked); }
-        if(setEnableLlmnr  && typeof s.EnableLlmnr  ==='boolean') setEnableLlmnr .checked=s.EnableLlmnr;
-        if(setEnableMdns   && typeof s.EnableMdns   ==='boolean') setEnableMdns  .checked=s.EnableMdns;
-        if(setEnableNbns   && typeof s.EnableNbns   ==='boolean') setEnableNbns  .checked=s.EnableNbns;
-        if(setEnableNbtstat&& typeof s.EnableNbtstat==='boolean') setEnableNbtstat.checked=s.EnableNbtstat;
-        // Diagnostics settings defaults/apply
+  // Single WebView message handler (avoid duplicates)
+  function onWebMessage(e){ const msg=e.data; if(typeof msg!=='string') return; if(msg.startsWith('adapters:data:')) handleAdapters(msg.substring('adapters:data:'.length)); else if(msg.startsWith('favorites:data:')) handleFavorites(msg.substring('favorites:data:'.length)); else if(msg==='adapters:clearInputs') clearAdapterInputs(); else if(msg==='disc:cancelled'){ discWasCancelled=true; } else if(msg.startsWith('disc:result:')){ if(discWasCancelled) return; const json=msg.substring('disc:result:'.length); try{ const r=JSON.parse(json); const tr=document.createElement('tr'); tr.classList.add('active-row'); const macNorm = normalizeMac(r.Mac||''); tr.innerHTML='<td>'+esc(r.Ip)+'</td><td>'+esc(r.Hostname||'')+'</td><td>'+esc(macNorm)+'</td><td>'+esc(r.Manufacturer||'')+'</td><td>'+esc(r.Status||'')+'</td>'; discResultsTbody.appendChild(tr); }catch{} } else if(msg.startsWith('disc:stats:')){ const parts=msg.substring('disc:stats:'.length).split('|'); if(parts.length>=4){ if(discProgress)discProgress.textContent='Progress: '+parts[0]+' / '+parts[1]; if(discActive)discActive.textContent='Active: '+parts[2]; if(discEta)discEta.textContent='ETA: '+parts[3]; } } else if(msg==='disc:clear'){ discWasCancelled=false; discResultsTbody.innerHTML=''; if(discProgress)discProgress.textContent='Progress: 0 / 0'; if(discActive)discActive.textContent='Active: 0'; if(discEta)discEta.textContent='ETA: --:--:--'; } else if(msg.startsWith('settings:data:')){ try{ isApplyingSettings=true; const s=JSON.parse(msg.substring('settings:data:'.length)); if(setDiscoveryParallel) setDiscoveryParallel.value = s.DiscoveryParallel ?? ''; if(setDiscoveryTimeout)  setDiscoveryTimeout .value = s.DiscoveryTimeout  ?? ''; if(setDarkMode){ setDarkMode.checked = !!s.DarkMode; applyDarkMode(setDarkMode.checked); } if(setEnableLlmnr  && typeof s.EnableLlmnr  ==='boolean') setEnableLlmnr .checked=s.EnableLlmnr; if(setEnableMdns   && typeof s.EnableMdns   ==='boolean') setEnableMdns  .checked=s.EnableMdns; if(setEnableNbns   && typeof s.EnableNbns   ==='boolean') setEnableNbns  .checked=s.EnableNbns; if(setEnableNbtstat&& typeof s.EnableNbtstat==='boolean') setEnableNbtstat.checked=s.EnableNbtstat; if(typeof s.DefaultSubnet==='string'){ const parts=s.DefaultSubnet.split('.'); const ds1=document.getElementById('defSub1'), ds2=document.getElementById('defSub2'), ds3=document.getElementById('defSub3'), ds4=document.getElementById('defSub4'); if(ds1) ds1.value=parts[0]||''; if(ds2) ds2.value=parts[1]||''; if(ds3) ds3.value=parts[2]||''; if(ds4) ds4.value=parts[3]||''; }
+        // Diagnostics defaults
         const storedRetries = (function(){ try{ return localStorage.getItem('diag_ping_retries'); }catch{ return null; } })();
         const storedInterval = (function(){ try{ return localStorage.getItem('diag_ping_interval_ms'); }catch{ return null; } })();
-        if(setPingRetriesEl) setPingRetriesEl.value = storedRetries ?? (s.PingRetries ?? '0');
-        if(setPingIntervalEl) setPingIntervalEl.value = storedInterval ? Math.max(1, Math.round(parseInt(storedInterval,10)/1000)).toString() : (s.PingIntervalSeconds ?? '2');
-        // apply to runtime
-        pingRetries = parseInt(setPingRetriesEl.value||'0',10) || 0;
-        pingIntervalMs = (parseInt(setPingIntervalEl.value||'2',10) || 2) * 1000;
-      }catch{}
-      finally{ isApplyingSettings=false; }
-    }
-  });
-
-  // expose subnet helper if needed
-  window.getDefaultSubnetFromOctets = function(){
-    const a=document.getElementById('defSub1')?.value||'';
-    const b=document.getElementById('defSub2')?.value||'';
-    const c=document.getElementById('defSub3')?.value||'';
-    const d=document.getElementById('defSub4')?.value||'';
-    return (a&&b&&c&&d)? `${a}.${b}.${c}.${d}` : '';
-  };
+        if(setPingRetriesEl) setPingRetriesEl.value = storedRetries ?? (s.PingRetries ?? '4');
+        if(setPingIntervalEl) setPingIntervalEl.value = storedInterval ? Math.max(1, Math.round(parseInt(storedInterval,10)/1000)).toString() : (s.PingIntervalSeconds ?? '5');
+        pingRetries = parseInt(setPingRetriesEl.value||'4',10) || 4;
+        pingIntervalMs = (parseInt(setPingIntervalEl.value||'5',10) || 5) * 1000;
+        lastSavedSnapshot = getSettingsSnapshot();
+      }catch{} finally{ isApplyingSettings=false; } } }
+  if(window.chrome && window.chrome.webview){ window.chrome.webview.removeEventListener?.('message', onWebMessage); window.chrome.webview.addEventListener('message', onWebMessage); }
 
   // =============================================
   // Table Sorting (Adapters + Discovery Results)

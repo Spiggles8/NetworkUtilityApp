@@ -38,10 +38,8 @@ namespace NetworkUtilityApp.Helpers
             return true;
         }
 
-        /// <summary>
-        /// Validates a single IPv4 octet (0..255).
-        /// Rejects null/empty and non-numeric values.
-        /// </summary>
+        // Validates a single IPv4 octet (0..255).
+        // Rejects null/empty and non-numeric values.
         public static bool IsValidOctet(string? s)
         {
             if (string.IsNullOrWhiteSpace(s)) return false;
@@ -49,10 +47,8 @@ namespace NetworkUtilityApp.Helpers
             return v >= 0 && v <= 255;
         }
 
-        /// <summary>
-        /// Joins four octet strings into a dotted IP (assumes already validated).
-        /// Trims leading zeros so "001" → "1".
-        /// </summary>
+        // Joins four octet strings into a dotted IP (assumes already validated).
+        // Trims leading zeros so "001" → "1".
         public static string JoinOctets(string o1, string o2, string o3, string o4)
             => $"{TrimLeadingZeros(o1)}.{TrimLeadingZeros(o2)}.{TrimLeadingZeros(o3)}.{TrimLeadingZeros(o4)}";
 
@@ -135,9 +131,7 @@ namespace NetworkUtilityApp.Helpers
             return true;
         }
 
-        /// <summary>
-        /// From IP + mask, compute start/end and prefix. Returns false if inputs invalid or mask non-contiguous.
-        /// </summary>
+        // From IP + mask, compute start/end and prefix. Returns false if inputs invalid or mask non-contiguous.
         public static bool TryGetNetworkRange(string ip, string mask, out uint start, out uint end, out int prefix)
         {
             start = end = 0;
@@ -156,10 +150,8 @@ namespace NetworkUtilityApp.Helpers
             return true;
         }
 
-        /// <summary>
-        /// Converts dotted mask to prefix length (e.g., 255.255.255.0 → 24).
-        /// Returns -1 if non-contiguous/invalid.
-        /// </summary>
+        // Converts dotted mask to prefix length (e.g., 255.255.255.0 → 24).
+        // Returns -1 if non-contiguous/invalid.
         public static int SubnetMaskToPrefix(string? mask)
         {
             if (!IsValidIPv4(mask)) return -1;
@@ -206,10 +198,8 @@ namespace NetworkUtilityApp.Helpers
             return true;
         }
 
-        /// <summary>
-        /// Converts UInt32 to dotted IPv4.
-        /// The input is treated as big-endian / network order.
-        /// </summary>
+        // Converts UInt32 to dotted IPv4.
+        // The input is treated as big-endian / network order.
         public static string ToIPv4(uint v)
         {
             var b1 = (byte)((v >> 24) & 0xFF);
@@ -219,10 +209,8 @@ namespace NetworkUtilityApp.Helpers
             return new IPAddress([b1, b2, b3, b4]).ToString();
         }
 
-        /// <summary>
-        /// Parses a comma/space/semicolon-separated list of ports (1..65535), deduped & sorted.
-        /// Ignores invalid entries.
-        /// </summary>
+        // Parses a comma/space/semicolon-separated list of ports (1..65535), deduped & sorted.
+        // Ignores invalid entries.
         public static List<int> ParsePortList(string? input)
         {
             var list = new List<int>();
@@ -271,9 +259,7 @@ namespace NetworkUtilityApp.Helpers
             return (true, string.Empty);
         }
 
-        /// <summary>
-        /// Validates four IP octets and returns the dotted IP if valid.
-        /// </summary>
+        // Validates four IP octets and returns the dotted IP if valid.
         public static (bool ok, string ipOrError) ValidateAndBuildIp(string o1, string o2, string o3, string o4)
         {
             if (!AreValidOctets(o1, o2, o3, o4)) return (false, "Each IP octet must be a number 0..255.");
