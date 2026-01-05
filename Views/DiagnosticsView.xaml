@@ -1,0 +1,91 @@
+<UserControl x:Class="NetworkUtilityApp.Views.DiagnosticsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="650" d:DesignWidth="1000">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Ping -->
+        <GroupBox Header="Ping" Grid.Row="0" Margin="0,0,0,12">
+            <Grid Margin="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="300"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Target (IP or host):" VerticalAlignment="Center"/>
+                <TextBox x:Name="PingTarget" Grid.Column="1" Margin="8,0" Height="28" VerticalContentAlignment="Center"/>
+                <Button x:Name="BtnPing" Grid.Column="2" Content="Ping" Padding="12,4" Margin="8,0,0,0"/>
+                <CheckBox x:Name="ChkPingContinuous" Grid.Column="3" Content="Ping continuously" Margin="16,0,0,0" VerticalAlignment="Center"/>
+            </Grid>
+        </GroupBox>
+
+        <!-- Traceroute -->
+        <GroupBox Header="Traceroute" Grid.Row="1" Margin="0,0,0,12">
+            <Grid Margin="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="300"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Target (IP or host):" VerticalAlignment="Center"/>
+                <TextBox x:Name="TraceTarget" Grid.Column="1" Margin="8,0" Height="28" VerticalContentAlignment="Center"/>
+                <CheckBox x:Name="ChkTraceResolve" Grid.Column="2" Content="Resolve names" Margin="16,0,8,0" VerticalAlignment="Center"/>
+                <Button x:Name="BtnRunTraceroute" Grid.Column="3" Content="Run Traceroute" Padding="12,4"/>
+            </Grid>
+        </GroupBox>
+
+        <!-- DNS (nslookup) -->
+        <GroupBox Header="DNS (nslookup)" Grid.Row="2" Margin="0,0,0,12">
+            <Grid Margin="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="300"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Target (IP or host):" VerticalAlignment="Center"/>
+                <TextBox x:Name="NslookupTarget" Grid.Column="1" Margin="8,0" Height="28" VerticalContentAlignment="Center"/>
+                <Button x:Name="BtnNslookupRun" Grid.Column="2" Content="nslookup" Padding="12,4" Margin="8,0,0,0"/>
+            </Grid>
+        </GroupBox>
+
+        <!-- PathPing -->
+        <GroupBox Header="PathPing" Grid.Row="3" Margin="0,0,0,12">
+            <Grid Margin="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="300"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Target (IP or host):" VerticalAlignment="Center"/>
+                <TextBox x:Name="PathpingTarget" Grid.Column="1" Margin="8,0" Height="28" VerticalContentAlignment="Center"/>
+                <Button x:Name="BtnPathpingRun" Grid.Column="2" Content="pathping" Padding="12,4" Margin="8,0,0,0"/>
+            </Grid>
+        </GroupBox>
+
+        <!-- Output + Cancel -->
+        <Grid Grid.Row="4">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                <Button x:Name="BtnCancel" Content="Cancel Command" Padding="12,4"/>
+            </StackPanel>
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <TextBox x:Name="TxtOutput" AcceptsReturn="True" TextWrapping="NoWrap" IsReadOnly="True" FontFamily="Consolas" VerticalScrollBarVisibility="Auto"/>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</UserControl>

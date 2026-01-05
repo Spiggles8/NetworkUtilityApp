@@ -405,5 +405,17 @@ namespace NetworkUtilityApp.Properties {
                 this["setting"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string LastTabKey {
+            get {
+                return ((string)(this["LastTabKey"]));
+            }
+            set {
+                this["LastTabKey"] = value;
+            }
+        }
     }
 }

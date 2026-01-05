@@ -1,4 +1,6 @@
-﻿using System.Text.Json;
+﻿using System;
+using System.IO;
+using System.Text.Json;
 
 namespace NetworkUtilityApp.Helpers
 {
@@ -16,12 +18,11 @@ namespace NetworkUtilityApp.Helpers
         private const int Count = 4;
 
         // Preferred: keep beside the executable so it travels with the app (developer-friendly)
-        private static readonly string ProjectFilePath = Path.Combine(AppContext.BaseDirectory, "favorites.json");
+        private static readonly string ProjectFilePath = System.IO.Path.Combine(AppContext.BaseDirectory, "favorites.json");
 
         // Fallback: AppData when write access to app folder is restricted
-        private static readonly string AppDir =
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "NetworkUtilityApp");
-        private static readonly string AppDataFilePath = Path.Combine(AppDir, "favorites.json");
+        private static readonly string AppDir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "NetworkUtilityApp");
+        private static readonly string AppDataFilePath = System.IO.Path.Combine(AppDir, "favorites.json");
 
         // Reuse serializer options (avoid CA1869 allocations)
         private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };

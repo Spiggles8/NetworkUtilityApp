@@ -1,0 +1,105 @@
+<UserControl x:Class="NetworkUtilityApp.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="650" d:DesignWidth="1000">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="12" Orientation="Vertical" >
+            <!-- UI -->
+            <GroupBox Header="UI" Margin="0,0,0,12">
+                <StackPanel Margin="12">
+                    <CheckBox x:Name="ChkDarkMode" Content="Enable Dark Mode"/>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Adapters: Favorites and visibility toggles -->
+            <GroupBox Header="Adapters" Margin="0,0,0,12">
+                <StackPanel Margin="12" Orientation="Vertical" >
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <CheckBox x:Name="ChkShowVirtual" Content="Show virtual adapters" Margin="0,0,12,0"/>
+                        <CheckBox x:Name="ChkShowLoopback" Content="Show loopback" Margin="0,0,12,0"/>
+                        <CheckBox x:Name="ChkShowBluetooth" Content="Show Bluetooth adapters"/>
+                    </StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="160"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="Favorite Slot:" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="FavSlot" Grid.Column="1" Width="140" Margin="8,0">
+                            <ComboBoxItem Content="Favorite #1" Tag="1"/>
+                            <ComboBoxItem Content="Favorite #2" Tag="2"/>
+                            <ComboBoxItem Content="Favorite #3" Tag="3"/>
+                            <ComboBoxItem Content="Favorite #4" Tag="4"/>
+                        </ComboBox>
+                        <TextBlock Text="IP:" Grid.Column="2" VerticalAlignment="Center"/>
+                        <TextBox x:Name="FavIp" Grid.Column="3" Margin="8,0"/>
+                        <TextBlock Text="Subnet:" Grid.Column="4" VerticalAlignment="Center"/>
+                        <TextBox x:Name="FavSubnet" Grid.Column="5" Margin="8,0"/>
+                        <TextBlock Text="Gateway:" Grid.Column="6" VerticalAlignment="Center"/>
+                        <TextBox x:Name="FavGateway" Grid.Column="7" Margin="8,0"/>
+                        <Button x:Name="BtnFavSave" Grid.Column="8" Content="Save Favorite" Padding="12,4" Margin="8,0,0,0"/>
+                    </Grid>
+                    <TextBlock x:Name="FavSaveStatus" Margin="0,6,0,0" FontSize="11" Foreground="#666"/>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Default Subnet -->
+            <GroupBox Header="Default Subnet" Margin="0,0,0,12">
+                <StackPanel Margin="12" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Subnet:" VerticalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" Margin="8,0,0,0">
+                        <TextBox x:Name="DefSub1" Width="44" Text="255"/>
+                        <TextBlock Text="." Margin="6,0" VerticalAlignment="Center"/>
+                        <TextBox x:Name="DefSub2" Width="44" Text="255"/>
+                        <TextBlock Text="." Margin="6,0" VerticalAlignment="Center"/>
+                        <TextBox x:Name="DefSub3" Width="44" Text="255"/>
+                        <TextBlock Text="." Margin="6,0" VerticalAlignment="Center"/>
+                        <TextBox x:Name="DefSub4" Width="44" Text="0"/>
+                    </StackPanel>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Network Discovery -->
+            <GroupBox Header="Network Discovery" Margin="0,0,0,12">
+                <StackPanel Margin="12" Orientation="Vertical">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="Discovery Parallelism:" VerticalAlignment="Center"/>
+                        <TextBox x:Name="SetDiscoveryParallel" Width="100" Margin="8,0"/>
+                        <TextBlock Text="Discovery Ping Timeout (ms):" VerticalAlignment="Center"/>
+                        <TextBox x:Name="SetDiscoveryTimeout" Width="100" Margin="8,0"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Vertical">
+                        <TextBlock Text="Name Resolution Methods" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                        <CheckBox x:Name="ChkEnableLlmnr" Content="Enable LLMNR" IsChecked="True"/>
+                        <CheckBox x:Name="ChkEnableMdns" Content="Enable mDNS" IsChecked="True"/>
+                        <CheckBox x:Name="ChkEnableNbns" Content="Enable NBNS" IsChecked="True"/>
+                        <CheckBox x:Name="ChkEnableNbtstat" Content="Enable NetBIOS (nbtstat)" IsChecked="True"/>
+                    </StackPanel>
+                </StackPanel>
+            </GroupBox>
+
+            <!-- Diagnostics -->
+            <GroupBox Header="Diagnostics">
+                <StackPanel Margin="12" Orientation="Horizontal">
+                    <TextBlock Text="Ping Retry Count:" VerticalAlignment="Center"/>
+                    <TextBox x:Name="SetPingRetries" Width="100" Margin="8,0"/>
+                    <TextBlock Text="Ping Interval (seconds):" VerticalAlignment="Center"/>
+                    <TextBox x:Name="SetPingInterval" Width="100" Margin="8,0"/>
+                </StackPanel>
+            </GroupBox>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
