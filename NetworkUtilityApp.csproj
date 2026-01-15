@@ -3,12 +3,19 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
+
+    <!-- Keep WinForms enabled (project contains WinForms UI components). -->
     <UseWindowsForms>true</UseWindowsForms>
+
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
-    <UseWPF>true</UseWPF>
-    <StartupObject>NetworkUtilityApp.Startup</StartupObject>
+
+    <!-- Migrating UI from WPF to WinUI 3: remove WPF build integration. -->
+    <!-- <UseWPF>true</UseWPF> -->
+
+    <!-- WinUI 3 uses its own application entry point; StartupObject will be updated as part of App conversion. -->
+    <!-- <StartupObject>NetworkUtilityApp.Startup</StartupObject> -->
   </PropertyGroup>
 
   <PropertyGroup>
@@ -17,6 +24,11 @@
 
   <ItemGroup>
     <AdditionalFiles Remove="app.manifest" />
+  </ItemGroup>
+
+  <!-- WinUI 3 / Windows App SDK dependencies (versions may be adjusted based on restore/build feedback). -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.240311000" />
   </ItemGroup>
 
   <!-- Ensure mac vendors JSON is copied to output for runtime lookup -->
