@@ -3,6 +3,12 @@ using System.Net.Sockets;
 
 namespace NetworkUtilityApp.Helpers
 {
+    /// <summary>
+    /// Lightweight NBNS (NetBIOS Name Service) resolver.
+    /// Sends a Node Status (NBSTAT) request to UDP/137 and parses the UNIQUE <00>
+    /// NetBIOS name from the returned name table. Intended for quick hostname hints
+    /// in discovery without a full NBNS implementation.
+    /// </summary>
     internal static class NbnsResolver
     {
         // Sends NBNS Node Status (NBSTAT) request to UDP/137 and parses UNIQUE <00> name.

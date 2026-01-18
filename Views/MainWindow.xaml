@@ -1,0 +1,74 @@
+<Window x:Class="NetworkUtilityApp.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:NetworkUtilityApp.Views"
+        Title="Network Utility" Height="600" Width="1000">
+    <!-- Root layout container; hosts the tabbed UI and per-tab output log -->
+    <DockPanel>
+        <!-- Main application tabs: Adapters, Diagnostics, Discovery, Settings -->
+        <TabControl x:Name="MainTabControl" DockPanel.Dock="Top">
+            <!-- Adapters tab: table + splitter + persistent output log row -->
+            <TabItem Header="Adapters" Name="adapters" Tag="adapters">
+                <Grid x:Name="GridAdapters">
+                    <Grid.RowDefinitions>
+                        <!-- Row 0: primary tab content (adapters table and controls) -->
+                        <RowDefinition Height="*"/>
+                        <!-- Row 1: splitter that lets user resize the output log area -->
+                        <RowDefinition Height="Auto"/>
+                        <!-- Row 2: output log area; height is persisted/restored -->
+                        <RowDefinition x:Name="RowAdaptersLog" Height="250"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Adapters view content -->
+                    <views:AdaptersView Grid.Row="0"/>
+                    <!-- Resizable splitter between content and log -->
+                    <GridSplitter x:Name="SplitterAdapters" Grid.Row="1" HorizontalAlignment="Stretch" Height="6" Background="#DDD" ShowsPreview="True" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"/>
+                    <!-- Persistent output log for this tab -->
+                    <views:LogView Grid.Row="2"/>
+                </Grid>
+            </TabItem>
+
+            <!-- Diagnostics tab: tools + splitter + output log -->
+            <TabItem Header="Diagnostics" Name="diagnostics" Tag="diagnostics">
+                <Grid x:Name="GridDiagnostics">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition x:Name="RowDiagnosticsLog" Height="250"/>
+                    </Grid.RowDefinitions>
+                    <views:DiagnosticsView Grid.Row="0"/>
+                    <GridSplitter x:Name="SplitterDiagnostics" Grid.Row="1" HorizontalAlignment="Stretch" Height="6" Background="#DDD" ShowsPreview="True" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"/>
+                    <views:LogView Grid.Row="2"/>
+                </Grid>
+            </TabItem>
+
+            <!-- Discovery tab: network scanning UI + splitter + output log -->
+            <TabItem Header="Discovery" Name="discovery" Tag="discovery">
+                <Grid x:Name="GridDiscovery">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition x:Name="RowDiscoveryLog" Height="250"/>
+                    </Grid.RowDefinitions>
+                    <views:DiscoveryView Grid.Row="0"/>
+                    <GridSplitter x:Name="SplitterDiscovery" Grid.Row="1" HorizontalAlignment="Stretch" Height="6" Background="#DDD" ShowsPreview="True" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"/>
+                    <views:LogView Grid.Row="2"/>
+                </Grid>
+            </TabItem>
+
+            <!-- Settings tab: app preferences + splitter + output log -->
+            <TabItem Header="Settings" Name="settings" Tag="settings">
+                <Grid x:Name="GridSettings">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition x:Name="RowSettingsLog" Height="250"/>
+                    </Grid.RowDefinitions>
+                    <views:SettingsView Grid.Row="0"/>
+                    <GridSplitter x:Name="SplitterSettings" Grid.Row="1" HorizontalAlignment="Stretch" Height="6" Background="#DDD" ShowsPreview="True" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext"/>
+                    <views:LogView Grid.Row="2"/>
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>

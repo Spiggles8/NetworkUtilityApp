@@ -26,9 +26,9 @@ namespace NetworkUtilityApp.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool RollingEnable {
+        public string RollingEnable {
             get {
-                return ((bool)(this["RollingEnable"]));
+                return ((string)(this["RollingEnable"]));
             }
             set {
                 this["RollingEnable"] = value;
@@ -38,9 +38,9 @@ namespace NetworkUtilityApp.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("100")]
-        public int RollingHead {
+        public string RollingHead {
             get {
-                return ((int)(this["RollingHead"]));
+                return ((string)(this["RollingHead"]));
             }
             set {
                 this["RollingHead"] = value;
@@ -50,9 +50,9 @@ namespace NetworkUtilityApp.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("200")]
-        public int RollingTail {
+        public string RollingTail {
             get {
-                return ((int)(this["RollingTail"]));
+                return ((string)(this["RollingTail"]));
             }
             set {
                 this["RollingTail"] = value;
@@ -62,9 +62,9 @@ namespace NetworkUtilityApp.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("400")]
-        public int RollingThreshold {
+        public string RollingThreshold {
             get {
-                return ((int)(this["RollingThreshold"]));
+                return ((string)(this["RollingThreshold"]));
             }
             set {
                 this["RollingThreshold"] = value;
@@ -74,9 +74,9 @@ namespace NetworkUtilityApp.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("1000")]
-        public int PingIntervalMs {
+        public string PingIntervalMs {
             get {
-                return ((int)(this["PingIntervalMs"]));
+                return ((string)(this["PingIntervalMs"]));
             }
             set {
                 this["PingIntervalMs"] = value;
@@ -86,9 +86,9 @@ namespace NetworkUtilityApp.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool DiscoveryResolveDns {
+        public string DiscoveryResolveDns {
             get {
-                return ((bool)(this["DiscoveryResolveDns"]));
+                return ((string)(this["DiscoveryResolveDns"]));
             }
             set {
                 this["DiscoveryResolveDns"] = value;
@@ -98,9 +98,9 @@ namespace NetworkUtilityApp.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("1000")]
-        public int DiscoveryTimeoutMs {
+        public string DiscoveryTimeoutMs {
             get {
-                return ((int)(this["DiscoveryTimeoutMs"]));
+                return ((string)(this["DiscoveryTimeoutMs"]));
             }
             set {
                 this["DiscoveryTimeoutMs"] = value;
@@ -110,9 +110,9 @@ namespace NetworkUtilityApp.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("256")]
-        public int DiscoveryMaxParallel {
+        public string DiscoveryMaxParallel {
             get {
-                return ((int)(this["DiscoveryMaxParallel"]));
+                return ((string)(this["DiscoveryMaxParallel"]));
             }
             set {
                 this["DiscoveryMaxParallel"] = value;
@@ -122,9 +122,9 @@ namespace NetworkUtilityApp.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool ShowMacInTable {
+        public string ShowMacInTable {
             get {
-                return ((bool)(this["ShowMacInTable"]));
+                return ((string)(this["ShowMacInTable"]));
             }
             set {
                 this["ShowMacInTable"] = value;
@@ -374,23 +374,12 @@ namespace NetworkUtilityApp.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool DarkMode {
+        public string DarkMode {
             get {
-                return ((bool)(this["DarkMode"]));
+                return ((string)(this["DarkMode"]));
             }
             set {
                 this["DarkMode"] = value;
-            }
-        }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        public bool ExportActiveOnly {
-            get {
-                return ((bool)(this["ExportActiveOnly"]));
-            }
-            set {
-                this["ExportActiveOnly"] = value;
             }
         }
         
@@ -403,6 +392,78 @@ namespace NetworkUtilityApp.Properties {
             }
             set {
                 this["setting"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string LastTabKey {
+            get {
+                return ((string)(this["LastTabKey"]));
+            }
+            set {
+                this["LastTabKey"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("NaN")]
+        public double WindowLeft {
+            get {
+                return ((double)(this["WindowLeft"]));
+            }
+            set {
+                this["WindowLeft"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("NaN")]
+        public double WindowTop {
+            get {
+                return ((double)(this["WindowTop"]));
+            }
+            set {
+                this["WindowTop"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1000")]
+        public double WindowWidth {
+            get {
+                return ((double)(this["WindowWidth"]));
+            }
+            set {
+                this["WindowWidth"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("600")]
+        public double WindowHeight {
+            get {
+                return ((double)(this["WindowHeight"]));
+            }
+            set {
+                this["WindowHeight"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int WindowState {
+            get {
+                return ((int)(this["WindowState"]));
+            }
+            set {
+                this["WindowState"] = value;
             }
         }
     }
