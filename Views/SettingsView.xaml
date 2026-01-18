@@ -27,11 +27,11 @@
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="160"/>
                             <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="260"/>
                             <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="260"/>
                             <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="140"/>
+                            <ColumnDefinition Width="260"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
@@ -45,11 +45,35 @@
                             <ComboBoxItem Content="Favorite #4" Tag="4"/>
                         </ComboBox>
                         <TextBlock Text="IP:" Grid.Column="2" VerticalAlignment="Center"/>
-                        <TextBox x:Name="FavIp" Grid.Column="3" Margin="8,0"/>
+                        <StackPanel Grid.Column="3" Orientation="Horizontal" Margin="8,0">
+                            <TextBox x:Name="FavIp1" Width="44" MaxLength="3" Margin="0,0,4,0"/>
+                            <TextBlock Text="." VerticalAlignment="Center"/>
+                            <TextBox x:Name="FavIp2" Width="44" MaxLength="3" Margin="4,0"/>
+                            <TextBlock Text="." VerticalAlignment="Center"/>
+                            <TextBox x:Name="FavIp3" Width="44" MaxLength="3" Margin="4,0"/>
+                            <TextBlock Text="." VerticalAlignment="Center"/>
+                            <TextBox x:Name="FavIp4" Width="44" MaxLength="3" Margin="4,0"/>
+                        </StackPanel>
                         <TextBlock Text="Subnet:" Grid.Column="4" VerticalAlignment="Center"/>
-                        <TextBox x:Name="FavSubnet" Grid.Column="5" Margin="8,0"/>
+                        <StackPanel Grid.Column="5" Orientation="Horizontal" Margin="8,0">
+                            <TextBox x:Name="FavSubnet1" Width="44" MaxLength="3" Margin="0,0,4,0"/>
+                            <TextBlock Text="." VerticalAlignment="Center"/>
+                            <TextBox x:Name="FavSubnet2" Width="44" MaxLength="3" Margin="4,0"/>
+                            <TextBlock Text="." VerticalAlignment="Center"/>
+                            <TextBox x:Name="FavSubnet3" Width="44" MaxLength="3" Margin="4,0"/>
+                            <TextBlock Text="." VerticalAlignment="Center"/>
+                            <TextBox x:Name="FavSubnet4" Width="44" MaxLength="3" Margin="4,0"/>
+                        </StackPanel>
                         <TextBlock Text="Gateway:" Grid.Column="6" VerticalAlignment="Center"/>
-                        <TextBox x:Name="FavGateway" Grid.Column="7" Margin="8,0"/>
+                        <StackPanel Grid.Column="7" Orientation="Horizontal" Margin="8,0">
+                            <TextBox x:Name="FavGateway1" Width="44" MaxLength="3" Margin="0,0,4,0"/>
+                            <TextBlock Text="." VerticalAlignment="Center"/>
+                            <TextBox x:Name="FavGateway2" Width="44" MaxLength="3" Margin="4,0"/>
+                            <TextBlock Text="." VerticalAlignment="Center"/>
+                            <TextBox x:Name="FavGateway3" Width="44" MaxLength="3" Margin="4,0"/>
+                            <TextBlock Text="." VerticalAlignment="Center"/>
+                            <TextBox x:Name="FavGateway4" Width="44" MaxLength="3" Margin="4,0"/>
+                        </StackPanel>
                         <Button x:Name="BtnFavSave" Grid.Column="8" Content="Save Favorite" Padding="12,4" Margin="8,0,0,0"/>
                     </Grid>
                     <TextBlock x:Name="FavSaveStatus" Margin="0,6,0,0" FontSize="11" Foreground="#666"/>

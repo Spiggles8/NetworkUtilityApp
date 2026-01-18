@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Linq;
-using NetworkUtilityApp.Models;
 
 namespace NetworkUtilityApp.Views
 {
@@ -9,9 +8,10 @@ namespace NetworkUtilityApp.Views
     /// </summary>
     public partial class DiscoveryView
     {
-        private async Task<DiscoveryProbeRow> ProbeAsync(string ip)
+        // Probe one IP: ping for reachability/latency, then try multiple hostname resolvers and MAC/vendor
+        private async Task<ProbeRow> ProbeAsync(string ip)
         {
-            var pr = new DiscoveryProbeRow { Ip = ip, Status = "No Reply" };
+            var pr = new ProbeRow { Ip = ip, Status = "No Reply" };
             try
             {
                 using var ping = new System.Net.NetworkInformation.Ping();
@@ -22,6 +22,7 @@ namespace NetworkUtilityApp.Views
                     pr.Status = "Active";
                     pr.LatencyMs = reply.RoundtripTime;
 
+                    // Try native DNS first; fall back to local heuristics (LLMNR/mDNS/NBNS/nbtstat)
                     try { var host = await System.Net.Dns.GetHostEntryAsync(ip); pr.Hostname = host.HostName; }
                     catch
                     {
@@ -31,10 +32,12 @@ namespace NetworkUtilityApp.Views
                         if (string.IsNullOrWhiteSpace(pr.Hostname)) pr.Hostname = TryResolveNetbiosName(ip);
                     }
 
+                    // MAC via cached ARP table; if missing, refresh cache and retry
                     if (_arpCache.TryGetValue(ip, out var mac)) pr.Mac = mac; else {
                         LoadArpTableInto(_arpCache);
                         if (_arpCache.TryGetValue(ip, out mac)) pr.Mac = mac;
                     }
+                    // Map MAC OUI to vendor name
                     pr.Manufacturer = Helpers.MacVendors.Lookup(pr.Mac);
                 }
             }
@@ -42,6 +45,7 @@ namespace NetworkUtilityApp.Views
             return pr;
         }
 
+        // Attempt NetBIOS name resolution via external nbtstat for stubborn cases
         private static string TryResolveNetbiosName(string ip)
         {
             try
@@ -66,7 +70,7 @@ namespace NetworkUtilityApp.Views
                 {
                     var t = line.Trim();
                     if (string.IsNullOrWhiteSpace(t)) continue;
-                    if (!t.Contains('<') || !t.Contains("<00>")) continue;
+                    if (!t.Contains('<') || !t.Contains("<00>")) continue; // UNIQUE <00> entries
                     var idx = t.IndexOf('<');
                     if (idx > 0)
                     {
@@ -80,6 +84,7 @@ namespace NetworkUtilityApp.Views
             return string.Empty;
         }
 
+        // Populate the ARP cache map by parsing `arp -a` output
         private static void LoadArpTableInto(Dictionary<string,string> map)
         {
             try
@@ -106,6 +111,7 @@ namespace NetworkUtilityApp.Views
                     if (parts.Length >= 3 && Helpers.ValidationHelper.IsValidIPv4(parts[0]))
                     {
                         var raw = parts[1];
+                        // Normalize MAC: strip separators, take first 12 hex, then format AA:BB:CC:DD:EE:FF
                         var hex = new string([.. raw.Where(c => Uri.IsHexDigit(c))]);
                         if (hex.Length >= 12)
                         {

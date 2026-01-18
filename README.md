@@ -2,40 +2,36 @@
 
 A quick, focused substitute for common Windows networking tools. The goal is to make looking up and adjusting basic network info faster and easier than digging through multiple built-in UIs and consoles.
 
-- Platform: Windows (WinForms host with WebView2 UI wrapper), .NET 8
+- Platform: Windows (WPF), .NET 8
 - Audience: Help desk, power users, lab setups
-- Scope: IPv4-centric day-to-day diagnostics and adapter tweaks
+- Scope: IPv4‑centric diagnostics, adapter management, and lightweight discovery
 
 ## Key features
-
-- Unified Dark Mode
-  - Host (WinForms) and WebView (HTML/JS) theme update together when toggling Dark Mode in Settings.
-
-- Quieter Output Log
-  - Routine settings load/save and startup/shutdown messages are suppressed; errors still logged.
-  - Central log panel for all actions, with Clear and Save options.
 
 - Network Adapters
   - View adapters: name, DHCP, IPv4, subnet, gateway, status, MAC, hardware details.
   - Apply DHCP or Static IP (uses `netsh`, requires admin).
-  - Quick-fill fields from favorite IP presets (saved in app).
-  - Export adapter list to .txt (tab-delimited).
-  - Context menu: copy IP/MAC/row, one‑shot ping.
+  - Quick‑fill fields from favorite IP presets (saved in app).
+  - Selection sync across tabs; respects visibility filters.
 
 - Diagnostics
-  - Ping (one‑shot) and Ping continuously (toggle, 2s interval). Button state/style reflects active loop.
+  - Ping (one‑shot).
   - Traceroute with optional name resolution.
-  - nslookup and pathping with separate targets.
-  - Results sent to the global log.
+  - nslookup and pathping runners with stdout/stderr capture.
 
 - Network Discovery
-  - Enter start and end IPv4 (or use Autofill from active adapter).
-  - Cancellable scan with progress bar, counts (scanned/active), and ETA.
-  - Shows IP, Hostname (reverse DNS on-network), MAC (via ARP), Manufacturer (OUI), Latency, Status.
+  - Autofill range from selected adapter or enter start/end IPv4.
+  - Cancellable parallel scan with progress, counts, and ETA.
+  - Enrichment: reverse DNS, LLMNR/mDNS/NBNS fallbacks, ARP MAC, OUI vendor.
   - Save results to .txt (tab‑delimited).
 
-- Code documentation for maintainers
-  - XML docs and inline comments across helpers and tabs (`LlmnrResolver`, `MdnsResolver`, `MacVendors`, `TabDiscovery`, `TabDiagnostics`, `TabNetworkAdapters`, `AlertForm`, `Form1`).
+- Output Log
+  - Central log panel appears on each tab.
+  - Clear and Save buttons; log persists between app runs.
+  - On app close: saves log and writes location + closed message.
+	
+	- Unified Dark Mode
+  - Consistent theming across tabs via Settings.
 
 ## Requirements
 
@@ -49,7 +45,7 @@ A quick, focused substitute for common Windows networking tools. The goal is to 
 - Visual Studio:
   1. Open the solution.
   2. Press F5 to run.
-  3. Use __Publish__ to create a distributable build (optionally self-contained).
+  3. Use Publish to create a distributable build (optionally self‑contained).
 
 - Command line:
   - `dotnet run` (Debug)
@@ -57,10 +53,9 @@ A quick, focused substitute for common Windows networking tools. The goal is to 
 
 ## Usage notes
 
-- Global log captures most actions. Routine settings noise is suppressed; errors are still logged.
-- Discovery uses ICMP and ARP parsing; MAC/manufacturer may be unavailable for devices outside the local segment or suppressed by OS caching.
+- Global log captures most actions and persists across runs.
+- Discovery uses ICMP and ARP parsing; MAC/vendor may be unavailable off‑segment or due to OS caching.
 - Traceroute parsing is tuned for English `tracert` output and is best‑effort.
-- Continuous ping runs until toggled off or the tab is disposed.
 
 ## Permissions
 
@@ -69,8 +64,6 @@ A quick, focused substitute for common Windows networking tools. The goal is to 
 
 ## Troubleshooting
 
-- Theme only partially updates:
-  - Ensure you’re on the latest build; Settings pushes theme updates to WebView immediately.
 - Adapter list empty:
   - Click Refresh; ensure network interfaces are enabled.
 - No MAC/manufacturer:
@@ -81,7 +74,6 @@ A quick, focused substitute for common Windows networking tools. The goal is to 
 ## Roadmap ideas (optional)
 
 - CSV/JSON exports
-- Parallel/bounded discovery for faster scans
 - IPv6 support
 - Route table and firewall views
 - Wake‑on‑LAN and netstat summaries

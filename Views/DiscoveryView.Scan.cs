@@ -3,7 +3,6 @@ using System.Net.NetworkInformation;
 using System.Windows; // for MessageBoxButton/Image
 using NetworkUtilityApp.Controllers;
 using NetworkUtilityApp.Helpers;
-using NetworkUtilityApp.Models;
 
 namespace NetworkUtilityApp.Views
 {
@@ -12,19 +11,60 @@ namespace NetworkUtilityApp.Views
     /// </summary>
     public partial class DiscoveryView
     {
+        // Populate adapter dropdown with filters aligned to AdaptersView
         private void LoadAdapters()
         {
             try
             {
                 var adapters = NetworkController.GetAdapters() ?? [];
-                CboAdapter.ItemsSource = adapters;
+
+                bool showVirtual = AppSettings.ShowVirtualAdapters;
+                bool showLoopback = AppSettings.ShowLoopbackAdapters;
+                bool showBluetooth = AppSettings.ShowBluetoothAdapters;
+
+                // Apply the same filtering rules as AdaptersView
+                var filtered = new List<NetworkAdapterInfo>();
+                foreach (var a in adapters)
+                {
+                    var desc = (a.HardwareDetails ?? string.Empty).ToLowerInvariant();
+                    var name = (a.AdapterName ?? string.Empty).ToLowerInvariant();
+
+                    bool isLoopback = name.Contains("loopback") || desc.Contains("loopback");
+                    if (!showLoopback && isLoopback) continue;
+
+                    bool isVirtual = desc.Contains("virtual") || name.Contains("virtualbox") || name.Contains("hyper-v") || desc.Contains("vmware");
+                    if (!showVirtual && isVirtual) continue;
+
+                    bool isBluetooth = desc.Contains("bluetooth") || name.Contains("bluetooth");
+                    if (!showBluetooth && isBluetooth) continue;
+
+                    filtered.Add(a);
+                }
+
+                CboAdapter.ItemsSource = filtered;
                 CboAdapter.DisplayMemberPath = nameof(NetworkAdapterInfo.AdapterName);
-                CboAdapter.SelectedIndex = adapters.Count > 0 ? 0 : -1;
+
+                // Prefer existing shared selection; otherwise select first adapter.
+                var target = AppSettings.SelectedAdapterName;
+                if (!string.IsNullOrWhiteSpace(target) && filtered.Count > 0)
+                {
+                    var match = filtered.FirstOrDefault(a => string.Equals(a.AdapterName, target, StringComparison.OrdinalIgnoreCase));
+                    if (match != null)
+                        CboAdapter.SelectedItem = match;
+                }
+
+                if (CboAdapter.SelectedIndex < 0 && filtered.Count > 0)
+                {
+                    CboAdapter.SelectedIndex = 0;
+                    if (CboAdapter.SelectedItem is NetworkAdapterInfo sel && string.IsNullOrWhiteSpace(AppSettings.SelectedAdapterName))
+                        AppSettings.SetSelectedAdapter(sel.AdapterName);
+                }
             }
             catch (Exception ex)
             { System.Windows.MessageBox.Show("Failed to load adapters.\n\n" + ex.Message, "Discovery", MessageBoxButton.OK, MessageBoxImage.Error); }
         }
 
+        // Autofill the start/end scan range based on selected adapter IP/subnet
         private void AutofillRange()
         {
             if (CboAdapter.SelectedItem is NetworkAdapterInfo a)
@@ -39,7 +79,7 @@ namespace NetworkUtilityApp.Views
             }
         }
 
-        // Compute the first 3 octets of the network base from IP and subnet mask
+        // Compute the first 3 octets of the network address (ip & mask) as base string
         private static string? GetNetworkBase(string ip, string subnet)
         {
             try
@@ -59,17 +99,19 @@ namespace NetworkUtilityApp.Views
             catch { return null; }
         }
 
+        // Kick off a parallel scan across the IP range; update progress and ETA
         private async Task StartScanAsync()
         {
             var start = TxtStartIp.Text.Trim();
             var end = TxtEndIp.Text.Trim();
-            if (!ValidationHelper.IsValidIPv4(start) || !ValidationHelper.IsValidIPv4(end))
+            if (!Helpers.ValidationHelper.IsValidIPv4(start) || !Helpers.ValidationHelper.IsValidIPv4(end))
             { System.Windows.MessageBox.Show("Enter valid start and end IP.", "Scan", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
             long s = IpToLong(start);
             long e = IpToLong(end);
             if (e < s)
             { System.Windows.MessageBox.Show("End IP must be greater than or equal to Start IP.", "Scan", MessageBoxButton.OK, MessageBoxImage.Information); return; }
 
+            // Reset state and initialize progress
             CancelScan();
             _cts = new CancellationTokenSource();
             _rows.Clear();
@@ -82,7 +124,7 @@ namespace NetworkUtilityApp.Views
             LoadArpTableInto(_arpCache);
 
             var token = _cts.Token;
-            var sem = new SemaphoreSlim(64);
+            var sem = new SemaphoreSlim(64); // bound concurrency
             var tasks = new List<Task>();
             for (long ipVal = s; ipVal <= e; ipVal++)
             {
@@ -91,6 +133,7 @@ namespace NetworkUtilityApp.Views
                 try { await sem.WaitAsync(token); }
                 catch (OperationCanceledException) { break; }
 
+                // Probe in background, update UI via dispatcher
                 tasks.Add(Task.Run(async () =>
                 {
                     try
@@ -119,12 +162,11 @@ namespace NetworkUtilityApp.Views
             }
         }
 
-        // Allow cancelling the ongoing scan
+        // Cancel current scan if running
         private void CancelScan()
-        {
-            try { _cts?.Cancel(); } catch { }
-        }
+        { try { _cts?.Cancel(); } catch { } }
 
+        // Update progress bar, counts, and compute simple ETA from average rate
         private void UpdateStats()
         {
             PrgScan.Value = Math.Min(_scanned, _total);
@@ -139,6 +181,7 @@ namespace NetworkUtilityApp.Views
             LblEta.Text = eta;
         }
 
+        // Convert dotted IPv4 to 32-bit integer for range iteration
         private static long IpToLong(string ip)
         {
             var parts = ip.Split('.');
@@ -149,6 +192,7 @@ namespace NetworkUtilityApp.Views
             return ((long)b0 << 24) | ((long)b1 << 16) | ((long)b2 << 8) | b3;
         }
 
+        // Convert 32-bit integer back to dotted IPv4 string
         private static string LongToIp(long v)
             => string.Join('.', (v >> 24) & 255, (v >> 16) & 255, (v >> 8) & 255, v & 255);
     }

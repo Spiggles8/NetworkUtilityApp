@@ -7,14 +7,18 @@ namespace NetworkUtilityApp.Views
     /// </summary>
     public partial class DiagnosticsView
     {
+        // Run traceroute against the target from the UI; optionally resolve hop names
         private async Task RunTracerouteAsync()
         {
             var target = TraceTarget.Text.Trim();
             if (string.IsNullOrWhiteSpace(target)) { Append("[ERROR] Enter a traceroute target."); return; }
             try
             {
+                // Call controller implementation; resolveNames controlled by checkbox
                 var res = Controllers.NetworkController.Traceroute(target, resolveNames: ChkTraceResolve.IsChecked == true);
                 Append($"[TRACE] Target: {res.Target}");
+
+                // Format hops: up to 3 RTTs per hop and hostname/IP
                 foreach (var h in res.Hops)
                 {
                     var r1 = h.Rtt1Ms?.ToString() ?? "*";
@@ -22,6 +26,8 @@ namespace NetworkUtilityApp.Views
                     var r3 = h.Rtt3Ms?.ToString() ?? "*";
                     Append($"{h.Hop,2}  {r1,4} ms  {r2,4} ms  {r3,4} ms  {h.HostnameOrAddress}");
                 }
+
+                // If parsing yielded no hops, show raw output to aid troubleshooting
                 if (res.Hops.Count == 0)
                 {
                     Append("[TRACE] No hops parsed. Raw output:");

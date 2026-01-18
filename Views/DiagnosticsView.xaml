@@ -5,8 +5,10 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
              d:DesignHeight="650" d:DesignWidth="1000">
+    <!-- Diagnostics tab: common network tools (Ping, Traceroute, DNS, PathPing) with command output -->
     <Grid Margin="12">
         <Grid.RowDefinitions>
+            <!-- Rows 0..3: grouped tool sections; Row 4: output area -->
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -14,7 +16,7 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Ping -->
+        <!-- Ping: run single/continuous ICMP echo -->
         <GroupBox Header="Ping" Grid.Row="0" Margin="0,0,0,12">
             <Grid Margin="12">
                 <Grid.ColumnDefinitions>
@@ -30,7 +32,7 @@
             </Grid>
         </GroupBox>
 
-        <!-- Traceroute -->
+        <!-- Traceroute: trace network path to target; optionally resolve hop names -->
         <GroupBox Header="Traceroute" Grid.Row="1" Margin="0,0,0,12">
             <Grid Margin="12">
                 <Grid.ColumnDefinitions>
@@ -46,7 +48,7 @@
             </Grid>
         </GroupBox>
 
-        <!-- DNS (nslookup) -->
+        <!-- DNS (nslookup): resolve target using system DNS -->
         <GroupBox Header="DNS (nslookup)" Grid.Row="2" Margin="0,0,0,12">
             <Grid Margin="12">
                 <Grid.ColumnDefinitions>
@@ -60,7 +62,7 @@
             </Grid>
         </GroupBox>
 
-        <!-- PathPing -->
+        <!-- PathPing: combination of ping and traceroute statistics -->
         <GroupBox Header="PathPing" Grid.Row="3" Margin="0,0,0,12">
             <Grid Margin="12">
                 <Grid.ColumnDefinitions>
@@ -74,7 +76,7 @@
             </Grid>
         </GroupBox>
 
-        <!-- Output + Cancel -->
+        <!-- Output area: cancel current command and view textual results -->
         <Grid Grid.Row="4">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>

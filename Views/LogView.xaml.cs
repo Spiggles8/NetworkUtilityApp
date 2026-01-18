@@ -16,6 +16,7 @@ namespace NetworkUtilityApp.Views
     public partial class LogView : System.Windows.Controls.UserControl
     {
         private readonly ObservableCollection<string> _items = []; // bound to ListBox
+        private bool _initialized;
 
         public LogView()
         {
@@ -29,19 +30,24 @@ namespace NetworkUtilityApp.Views
 
         private void OnLoaded(object? sender, RoutedEventArgs e)
         {
-            // Initial population from snapshot
-            LogList.ItemsSource = _items;
-            foreach (var entry in AppLog.Snapshot())
-                _items.Add(entry.ToString());
+            if (!_initialized)
+            {
+                // Load persisted log from file on first load
+                AppLog.LoadFromFile();
+                LogList.ItemsSource = _items;
+                foreach (var entry in AppLog.Snapshot())
+                    _items.Add(entry.ToString());
 
-            // Subscribe for streaming updates
-            AppLog.EntryAdded += OnEntryAdded;
+                // Subscribe for streaming updates
+                AppLog.EntryAdded += OnEntryAdded;
+                _initialized = true;
+            }
         }
 
         private void OnUnloaded(object? sender, RoutedEventArgs e)
         {
-            // Unsubscribe to avoid memory leaks when view is detached
-            AppLog.EntryAdded -= OnEntryAdded;
+            // Keep subscription across tab switches; unsubscribe only if needed during disposal
+            // No Application.Current.Exit subscriptions here to avoid duplicate closing messages
         }
 
         private void OnEntryAdded(object? sender, LogEntry e)

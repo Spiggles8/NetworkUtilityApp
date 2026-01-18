@@ -5,20 +5,25 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
              d:DesignHeight="650" d:DesignWidth="1000">
+    <!-- Adapters tab content: refresh control, adapters table, selection label, and network configuration form -->
     <Grid Margin="12">
         <Grid.RowDefinitions>
+            <!-- Row 0: header with Refresh button -->
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
+            <!-- Row 1: adapters DataGrid -->
+            <RowDefinition Height="Auto"/>
+            <!-- Row 2: selected adapter label -->
+            <RowDefinition Height="Auto"/>
+            <!-- Row 3: network configuration form (IP/Subnet/Gateway + actions + favorites) -->
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Header: Refresh + Selected Adapter label -->
+        <!-- Header: Refresh button triggers table reload -->
         <StackPanel Orientation="Horizontal" Grid.Row="0" Margin="0,0,0,8">
-            <Button x:Name="BtnRefresh" Content="Refresh Adapters" Padding="12,4" Margin="0,0,12,0"/>
-            <TextBlock x:Name="LblSelectedAdapter" Text="Selected Adapter: None" VerticalAlignment="Center"/>
+            <Button x:Name="BtnRefresh" Content="Refresh Adapters" Padding="12,4"/>
         </StackPanel>
 
-        <!-- Adapters grid -->
+        <!-- Adapters grid showing current NIC info -->
         <DataGrid x:Name="DgvAdapters"
                   Grid.Row="1"
                   AutoGenerateColumns="False"
@@ -26,8 +31,11 @@
                   HeadersVisibility="Column"
                   SelectionMode="Single"
                   Margin="0"
-                  >
+                  MaxHeight="360"
+                  ScrollViewer.VerticalScrollBarVisibility="Auto"
+                  ScrollViewer.CanContentScroll="True">
             <DataGrid.Columns>
+                <!-- Basic adapter properties -->
                 <DataGridTextColumn Header="Adapter" Binding="{Binding AdapterName}" MinWidth="120"/>
                 <DataGridTextColumn Header="DHCP" Binding="{Binding Dhcp}" MinWidth="80"/>
                 <DataGridTextColumn Header="IP Address" Binding="{Binding IpAddress}" MinWidth="120"/>
@@ -39,14 +47,23 @@
             </DataGrid.Columns>
         </DataGrid>
 
-        <!-- Configuration group -->
-        <GroupBox Grid.Row="2" Header="Set Network Configuration" Padding="12" Margin="0,8,0,0">
+        <!-- Selected adapter label below the grid -->
+        <TextBlock x:Name="LblSelectedAdapter"
+                   Grid.Row="2"
+                   Margin="0,8,0,8"
+                   Text="Selected Adapter: None"/>
+
+        <!-- Configuration group: octet inputs for IP/Subnet/Gateway, action buttons, and favorite presets -->
+        <GroupBox Grid.Row="3" Header="Set Network Configuration" Padding="12">
             <Grid>
                 <Grid.ColumnDefinitions>
+                    <!-- Left columns hold labels and octet inputs -->
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <!-- Favorites right beside inputs -->
+                    <ColumnDefinition Width="Auto"/>
+                    <!-- Spacer/grow -->
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -57,7 +74,7 @@
 
                 <!-- IP Address octets -->
                 <TextBlock Text="IP Address:" Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="1" Margin="0,0,16,0">
+                <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="1" Margin="0,0,8,0">
                     <TextBox x:Name="TxtIP1" Width="44" Margin="0,0,4,0"/>
                     <TextBox x:Name="TxtIP2" Width="44" Margin="0,0,4,0"/>
                     <TextBox x:Name="TxtIP3" Width="44" Margin="0,0,4,0"/>
@@ -66,7 +83,7 @@
 
                 <!-- Subnet octets -->
                 <TextBlock Text="Subnet Mask:" Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="1" Margin="0,0,16,0">
+                <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="1" Margin="0,0,8,0">
                     <TextBox x:Name="TxtSubnet1" Width="44" Margin="0,0,4,0"/>
                     <TextBox x:Name="TxtSubnet2" Width="44" Margin="0,0,4,0"/>
                     <TextBox x:Name="TxtSubnet3" Width="44" Margin="0,0,4,0"/>
@@ -75,21 +92,21 @@
 
                 <!-- Gateway octets -->
                 <TextBlock Text="Gateway:" Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <StackPanel Orientation="Horizontal" Grid.Row="2" Grid.Column="1" Margin="0,0,16,0">
+                <StackPanel Orientation="Horizontal" Grid.Row="2" Grid.Column="1" Margin="0,0,8,0">
                     <TextBox x:Name="TxtGateway1" Width="44" Margin="0,0,4,0"/>
                     <TextBox x:Name="TxtGateway2" Width="44" Margin="0,0,4,0"/>
                     <TextBox x:Name="TxtGateway3" Width="44" Margin="0,0,4,0"/>
                     <TextBox x:Name="TxtGateway4" Width="44"/>
                 </StackPanel>
 
-                <!-- DHCP / Static buttons -->
+                <!-- DHCP / Static action buttons -->
                 <StackPanel Orientation="Horizontal" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,8,0,0">
                     <Button x:Name="BtnSetDhcp" Content="Set DHCP" Padding="8,4" Margin="0,0,8,0"/>
                     <Button x:Name="BtnSetStatic" Content="Set Static" Padding="8,4"/>
                 </StackPanel>
 
-                <!-- Favorite IP Addresses -->
-                <StackPanel Grid.Row="0" Grid.Column="3" Grid.RowSpan="4" Margin="16,0,0,0">
+                <!-- Favorite IP Addresses: quickly fill octets with presets -->
+                <StackPanel Grid.Row="0" Grid.Column="2" Grid.RowSpan="4" Margin="12,0,0,0">
                     <TextBlock Text="Favorite IP Addresses" Margin="0,0,0,8"/>
                     <Button x:Name="BtnFavIPAddress1" Content="192.168.1.8" Margin="0,0,0,4"/>
                     <Button x:Name="BtnFavIPAddress2" Content="192.168.8.8" Margin="0,0,0,4"/>
